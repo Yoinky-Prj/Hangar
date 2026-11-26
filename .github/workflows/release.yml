@@ -1,7 +1,11 @@
-name: Release
+name: Build and release
 
-# Publishing a GitHub release tagged vX.Y.Z builds Hangar for Windows and
-# attaches to it:
+# Every push to main builds Hangar for Windows. Besides checking that it
+# builds, that keeps main's Rust build cache current: a release runs under its
+# tag, and GitHub lets a tag's run restore caches only from that tag or from
+# main, so without these builds every release would compile from scratch.
+#
+# Publishing a GitHub release tagged vX.Y.Z builds that version and attaches:
 #   Hangar_X.Y.Z_x64-setup.exe     the installer; installed copies update from it
 #   Hangar_X.Y.Z_x64-portable.exe  the standalone exe (doesn't update itself)
 #   latest.json                    what installed copies read to find updates
@@ -9,6 +13,8 @@ name: Release
 # tauri.conf.json's version doesn't need bumping.
 
 on:
+  push:
+    branches: [main]
   release:
     types: [published]
 
@@ -16,7 +22,9 @@ permissions:
   contents: write
 
 concurrency:
-  group: release-${{ github.event.release.tag_name }}
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # A newer push makes an older push's build pointless; a release always finishes.
+  cancel-in-progress: ${{ github.event_name == 'push' }}
 
 jobs:
   windows:
@@ -36,8 +44,11 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
+          # Only main's cache can be restored by later runs; a tag's can't.
+          save-if: ${{ github.event_name == 'push' }}
 
       - name: Version from the tag
+        if: github.event_name == 'release'
         id: version
         run: |
           $v = $env:TAG -replace '^v', ''
@@ -50,9 +61,15 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Build
+        if: github.event_name == 'push'
+        run: bun run tauri build --no-bundle
+
+      - name: Build the release
+        if: github.event_name == 'release'
         run: bun run tauri build --bundles nsis --config "$env:RUNNER_TEMP/release.conf.json"
 
       - name: Attach to the release
+        if: github.event_name == 'release'
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.value }}
