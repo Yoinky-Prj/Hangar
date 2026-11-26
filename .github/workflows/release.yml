@@ -4,6 +4,7 @@ name: Release
 # attaches to it:
 #   Hangar_X.Y.Z_x64-setup.exe     the installer; installed copies update from it
 #   Hangar_X.Y.Z_x64-portable.exe  the standalone exe (doesn't update itself)
+#   latest.json                    what installed copies read to find updates
 # The tag is the version: the app and the installer get it from there, so
 # tauri.conf.json's version doesn't need bumping.
 
@@ -55,10 +56,24 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.value }}
+          NOTES: ${{ github.event.release.body }}
+          PUBLISHED: ${{ github.event.release.published_at }}
         run: |
           $release = "src-tauri/target/release"
-          $setup = "$release/bundle/nsis/Hangar_${env:VERSION}_x64-setup.exe"
+          $setupName = "Hangar_${env:VERSION}_x64-setup.exe"
+          $setup = "$release/bundle/nsis/$setupName"
           if (-not (Test-Path $setup)) { throw "The installer wasn't built: $setup" }
           $portable = "$env:RUNNER_TEMP/Hangar_${env:VERSION}_x64-portable.exe"
           Copy-Item "$release/hangar.exe" $portable
-          gh release upload $env:TAG $setup $portable --clobber --repo $env:GITHUB_REPOSITORY
+          # Installed copies read this from releases/latest/download/latest.json,
+          # which (unlike GitHub's API) has no per-IP hourly limit.
+          $latest = "$env:RUNNER_TEMP/latest.json"
+          [ordered]@{
+            version  = $env:VERSION
+            notes    = "$env:NOTES"
+            pub_date = $env:PUBLISHED
+            url      = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$env:TAG/$setupName"
+            size     = (Get-Item $setup).Length
+          } | ConvertTo-Json | Set-Content $latest -Encoding utf8NoBOM
+          Get-Content $latest
+          gh release upload $env:TAG $setup $portable $latest --clobber --repo $env:GITHUB_REPOSITORY

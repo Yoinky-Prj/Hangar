@@ -1,7 +1,11 @@
-//! Updates for the installed Hangar: it asks GitHub for the latest release at
-//! start (and every few hours) and, when asked, downloads that release's
-//! installer and runs it in update mode. The standalone exe and dev builds
-//! never update themselves.
+//! Updates for the installed Hangar: it reads the latest GitHub release's
+//! `latest.json` at start (and every few hours) and, when asked, downloads that
+//! release's installer and runs it in update mode. The standalone exe and dev
+//! builds never update themselves.
+//!
+//! `latest.json` is a release file (written by the release workflow), not the
+//! GitHub API: the API allows only 60 requests an hour per IP address without
+//! sign-in, which a shared network uses up quickly.
 //!
 //! There's no signature check: the installer is trusted because it is the one
 //! attached to this repository's latest GitHub release, fetched over HTTPS.
@@ -14,26 +18,22 @@ use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager, WebviewWindow};
 
-/// The latest published release; drafts and pre-releases never count. A test
-/// build can point this at a local server.
+/// `latest.json` of the latest published release; drafts and pre-releases
+/// never count. A test build can point this at a local server.
 const LATEST: &str = match option_env!("HANGAR_LATEST_RELEASE_URL") {
     Some(u) => u,
-    None => "https://api.github.com/repos/Yoinky-Prj/Hangar/releases/latest",
+    None => "https://github.com/Yoinky-Prj/Hangar/releases/latest/download/latest.json",
 };
 const RECHECK: Duration = Duration::from_secs(6 * 60 * 60);
 
+/// What the release workflow writes to `latest.json`.
 #[derive(Deserialize)]
-struct Release {
-    tag_name: String,
-    body: Option<String>,
-    published_at: Option<String>,
-    assets: Vec<Asset>,
-}
-
-#[derive(Deserialize)]
-struct Asset {
-    name: String,
-    browser_download_url: String,
+struct Latest {
+    version: String,
+    notes: Option<String>,
+    pub_date: Option<String>,
+    /// The installer.
+    url: String,
     size: u64,
 }
 
@@ -90,33 +90,34 @@ fn download_dir() -> PathBuf {
     std::env::temp_dir().join("Hangar-update")
 }
 
-/// The release, if it's newer than `current` and its installer is attached
-/// (the release workflow attaches it some minutes after publishing).
-fn newer(release: &Release, current: &str) -> Option<Pending> {
-    let version = semver::Version::parse(release.tag_name.trim_start_matches('v')).ok()?;
+/// The release, if it's newer than `current`.
+fn newer(latest: &Latest, current: &str) -> Option<Pending> {
+    let version = semver::Version::parse(latest.version.trim_start_matches('v')).ok()?;
     if version <= semver::Version::parse(current).ok()? {
         return None;
     }
-    let setup = release.assets.iter().find(|a| a.name.ends_with("_x64-setup.exe"))?;
     Some(Pending {
         info: UpdateInfo {
             version: version.to_string(),
-            notes: release.body.clone().filter(|b| !b.trim().is_empty()),
-            date: release.published_at.clone(),
+            notes: latest.notes.clone().filter(|n| !n.trim().is_empty()),
+            date: latest.pub_date.clone(),
         },
-        url: setup.browser_download_url.clone(),
-        size: setup.size,
+        url: latest.url.clone(),
+        size: latest.size,
     })
 }
 
 async fn check(app: &AppHandle) -> AppResult<Option<UpdateInfo>> {
     let updates = app.state::<Updates>();
-    let res = updates.http.get(LATEST).header("Accept", "application/vnd.github+json").send().await?;
-    if res.status() == reqwest::StatusCode::NOT_FOUND {
-        return Err(msg("Couldn't check for updates: GitHub has no published release of Hangar (or the repository isn't public)."));
-    }
-    let release: Release = res.error_for_status()?.json().await?;
-    let found = newer(&release, &app.package_info().version.to_string());
+    let res = updates.http.get(LATEST).send().await?;
+    // No release yet, or the newest one is still building (its files come
+    // some minutes after it's published): nothing to update to.
+    let found = if res.status() == reqwest::StatusCode::NOT_FOUND {
+        None
+    } else {
+        let latest: Latest = res.error_for_status()?.json().await?;
+        newer(&latest, &app.package_info().version.to_string())
+    };
     let info = found.as_ref().map(|p| p.info.clone());
     *updates.pending() = found;
     Ok(info)
@@ -222,30 +223,38 @@ pub async fn install_update(app: AppHandle, window: WebviewWindow) -> AppResult<
 mod tests {
     use super::*;
 
-    fn release(tag: &str, assets: &[&str]) -> Release {
-        Release {
-            tag_name: tag.into(),
-            body: Some("Notes".into()),
-            published_at: Some("2026-11-27T10:00:00Z".into()),
-            assets: assets
-                .iter()
-                .map(|n| Asset { name: n.to_string(), browser_download_url: format!("https://example.test/{n}"), size: 42 })
-                .collect(),
-        }
+    /// Parses `latest.json` as the release workflow writes it.
+    fn latest(version: &str) -> Latest {
+        serde_json::from_value(serde_json::json!({
+            "version": version,
+            "notes": "Notes",
+            "pub_date": "2026-11-27T10:00:00Z",
+            "url": format!("https://example.test/Hangar_{version}_x64-setup.exe"),
+            "size": 42
+        }))
+        .expect("latest.json")
     }
 
     #[test]
-    fn offers_only_a_newer_release_with_its_installer() {
-        let both = ["Hangar_0.2.0_x64-portable.exe", "Hangar_0.2.0_x64-setup.exe"];
-        let p = newer(&release("v0.2.0", &both), "0.1.0").expect("newer");
+    fn offers_only_a_newer_release() {
+        let p = newer(&latest("0.2.0"), "0.1.0").expect("newer");
         assert_eq!(p.info.version, "0.2.0");
+        assert_eq!(p.info.notes.as_deref(), Some("Notes"));
+        assert_eq!(p.info.date.as_deref(), Some("2026-11-27T10:00:00Z"));
         assert_eq!(p.url, "https://example.test/Hangar_0.2.0_x64-setup.exe");
         assert_eq!(p.size, 42);
 
-        assert!(newer(&release("v0.1.0", &both), "0.1.0").is_none(), "same version");
-        assert!(newer(&release("v0.0.9", &both), "0.1.0").is_none(), "older");
-        assert!(newer(&release("0.10.0", &both), "0.9.0").is_some(), "numeric, not text, order; no v");
-        assert!(newer(&release("v0.2.0", &["Hangar_0.2.0_x64-portable.exe"]), "0.1.0").is_none(), "installer not attached yet");
-        assert!(newer(&release("latest", &both), "0.1.0").is_none(), "tag isn't a version");
+        assert!(newer(&latest("0.1.0"), "0.1.0").is_none(), "same version");
+        assert!(newer(&latest("0.0.9"), "0.1.0").is_none(), "older");
+        assert!(newer(&latest("0.10.0"), "0.9.0").is_some(), "numeric, not text, order");
+        assert!(newer(&latest("v0.2.0"), "0.1.0").is_some(), "a leading v is fine");
+        assert!(newer(&latest("soon"), "0.1.0").is_none(), "not a version");
+    }
+
+    #[test]
+    fn notes_and_date_are_optional() {
+        let l: Latest = serde_json::from_str(r#"{"version":"0.2.0","url":"https://example.test/x.exe","size":1}"#).expect("parse");
+        let p = newer(&l, "0.1.0").expect("newer");
+        assert!(p.info.notes.is_none() && p.info.date.is_none());
     }
 }
