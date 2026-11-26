@@ -66,6 +66,10 @@ jobs:
 
       - name: Build the release
         if: github.event_name == 'release'
+        env:
+          # Built into the app, so Settings > About shows this version's notes offline.
+          HANGAR_RELEASE_NOTES: ${{ github.event.release.body }}
+          HANGAR_RELEASE_DATE: ${{ github.event.release.published_at }}
         run: bun run tauri build --bundles nsis --config "$env:RUNNER_TEMP/release.conf.json"
 
       - name: Attach to the release

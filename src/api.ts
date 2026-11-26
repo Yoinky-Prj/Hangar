@@ -75,6 +75,9 @@ export interface UpdateInfo {
 
 export interface UpdateStatus {
   current: string;
+  /** This version's release notes; null for a build not made from a GitHub release. */
+  currentNotes: string | null;
+  currentDate: string | null;
   /** Installed with the installer, so it can update itself; the standalone exe can't. */
   installed: boolean;
   available: UpdateInfo | null;

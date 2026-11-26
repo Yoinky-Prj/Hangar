@@ -177,6 +177,8 @@ export function AboutTab() {
   const [upToDate, setUpToDate] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  /** Whose notes the changelog shows while an update is waiting. */
+  const [shown, setShown] = useState<"new" | "installed">("new");
 
   async function check() {
     setChecking(true);
@@ -194,6 +196,10 @@ export function AboutTab() {
   }
 
   if (!s) return <LoaderCircle size={16} className="spin" />;
+  const update = s.installed ? s.available : null;
+  const newOne = update && shown === "new" ? update : null;
+  const notes = newOne ? newOne.notes : s.currentNotes;
+  const date = newOne ? newOne.date : s.currentDate;
   return (
     <>
       <div className="kv" style={{ marginBottom: 16 }}>
@@ -202,32 +208,58 @@ export function AboutTab() {
         <span className="k">Copy</span>
         <span className="v">{s.installed ? "Installed (updates itself)" : "Standalone exe (doesn't update itself)"}</span>
       </div>
-      {s.installed ? (
-        <>
-          {s.available ? (
-            <div className="callout" style={{ alignItems: "center" }}>
-              <CircleArrowUp size={15} color="var(--accent)" />
-              <div style={{ flex: 1 }}>
-                Hangar <b>{s.available.version}</b> is available.
-              </div>
-              <button className="btn small primary" onClick={() => setOpen(true)}>
-                Update…
+
+      {s.installed && !update && (
+        <div className="row" style={{ marginBottom: 12 }}>
+          <button className="btn" onClick={check} disabled={checking}>
+            {checking ? <LoaderCircle size={14} className="spin" /> : <RefreshCw size={14} />}
+            Check for updates
+          </button>
+          {upToDate && <span className="hint">You have the latest version.</span>}
+        </div>
+      )}
+
+      <div className="card">
+        <div className="row" style={{ marginBottom: 8 }}>
+          {update ? (
+            <div className="segmented">
+              <button type="button" className={newOne ? "on" : ""} onClick={() => setShown("new")}>
+                {update.version} · new
+              </button>
+              <button type="button" className={newOne ? "" : "on"} onClick={() => setShown("installed")}>
+                {s.current} · installed
               </button>
             </div>
           ) : (
-            <div className="row">
-              <button className="btn" onClick={check} disabled={checking}>
-                {checking ? <LoaderCircle size={14} className="spin" /> : <RefreshCw size={14} />}
-                Check for updates
-              </button>
-              {upToDate && <span className="hint">You have the latest version.</span>}
-            </div>
+            <h4 style={{ margin: 0 }}>What's new in {s.current}</h4>
           )}
-          <div className="hint" style={{ marginTop: 12 }}>
-            Hangar looks for a new version on GitHub when it starts and every few hours, and shows an Update button in the title bar when
-            there is one.
+          <div className="spacer" />
+          {update && (
+            <button className="btn small primary" onClick={() => setOpen(true)}>
+              <CircleArrowUp size={14} />
+              Update to {update.version}
+            </button>
+          )}
+        </div>
+        {date && (
+          <div className="hint" style={{ marginBottom: 6 }}>
+            Released {fmtDate(date)}
           </div>
-        </>
+        )}
+        {notes ? (
+          <div className="release-notes selectable">{notes}</div>
+        ) : (
+          <div className="hint">
+            {newOne ? "No release notes." : "This build wasn't made from a GitHub release, so it has no release notes."}
+          </div>
+        )}
+      </div>
+
+      {s.installed ? (
+        <div className="hint">
+          Hangar looks for a new version on GitHub when it starts and every few hours, and shows an Update button in the title bar when
+          there is one.
+        </div>
       ) : (
         <div className="hint">
           New versions are published on GitHub. The installer keeps Hangar up to date by itself; a standalone exe has to be replaced by
@@ -245,7 +277,7 @@ export function AboutTab() {
           <div>{error}</div>
         </div>
       )}
-      {open && s.available && <UpdateDialog current={s.current} info={s.available} onClose={() => setOpen(false)} />}
+      {open && update && <UpdateDialog current={s.current} info={update} onClose={() => setOpen(false)} />}
     </>
   );
 }

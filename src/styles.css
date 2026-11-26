@@ -1948,6 +1948,14 @@ button.pill-link:hover {
   background: var(--panel-2);
 }
 
+.release-notes {
+  max-height: 220px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .winctl {
   display: flex;
   align-self: stretch;

@@ -26,6 +26,15 @@ const LATEST: &str = match option_env!("HANGAR_LATEST_RELEASE_URL") {
 };
 const RECHECK: Duration = Duration::from_secs(6 * 60 * 60);
 
+/// This build's release notes and publish date. The release workflow sets them
+/// at build time, so About can show them offline; a local build has none.
+const NOTES: Option<&str> = option_env!("HANGAR_RELEASE_NOTES");
+const RELEASED: Option<&str> = option_env!("HANGAR_RELEASE_DATE");
+
+fn non_empty(s: Option<&str>) -> Option<String> {
+    s.map(str::trim).filter(|s| !s.is_empty()).map(String::from)
+}
+
 /// What the release workflow writes to `latest.json`.
 #[derive(Deserialize)]
 struct Latest {
@@ -73,6 +82,8 @@ impl Updates {
 #[serde(rename_all = "camelCase")]
 pub struct UpdateStatus {
     current: String,
+    current_notes: Option<String>,
+    current_date: Option<String>,
     /// Installed with the installer, so it can update itself.
     installed: bool,
     available: Option<UpdateInfo>,
@@ -151,6 +162,8 @@ pub fn watch(app: &AppHandle) {
 pub fn update_status(app: AppHandle) -> UpdateStatus {
     UpdateStatus {
         current: app.package_info().version.to_string(),
+        current_notes: non_empty(NOTES),
+        current_date: non_empty(RELEASED),
         installed: installed(),
         available: app.state::<Updates>().pending().as_ref().map(|p| p.info.clone()),
     }
