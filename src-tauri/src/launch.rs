@@ -157,6 +157,8 @@ pub fn open_window(app: &AppHandle, intent: Intent) -> tauri::Result<()> {
 
 /// A second `hangar.exe` was started while Hangar is running.
 pub fn second_launch(app: &AppHandle, argv: Vec<String>) {
+    // Starting Hangar again is a natural moment to look for an update.
+    crate::updates::check_now(app);
     let launch = parse(argv.get(1..).unwrap_or_default());
     let app = app.clone();
     // Off the callback's thread: building a webview from inside it can stall.

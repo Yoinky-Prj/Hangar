@@ -19,19 +19,26 @@ function publish(s: UpdateStatus) {
   for (const f of subscribers) f();
 }
 
+/** Reads the backend's state, which always has the result of its last check. */
+function refresh() {
+  api
+    .updateStatus()
+    .then(publish)
+    .catch(() => {});
+}
+
 function setAvailable(u: UpdateInfo | null) {
   if (status) publish({ ...status, available: u });
+  else refresh();
 }
 
 function start() {
   if (started) return;
   started = true;
-  // The backend checks at start and every few hours, and tells every window.
-  onUpdateAvailable(setAvailable);
-  api
-    .updateStatus()
-    .then((s) => publish(status?.available && !s.available ? { ...s, available: status.available } : s))
-    .catch(() => {});
+  // The backend checks at start, when Hangar is started again and every hour,
+  // and announces a new version. Listen first, then read, and re-read on each
+  // announcement: a check finishing in between can't be missed that way.
+  onUpdateAvailable(refresh).then(refresh, refresh);
 }
 
 function subscribe(f: () => void) {
@@ -257,7 +264,7 @@ export function AboutTab() {
 
       {s.installed ? (
         <div className="hint">
-          Hangar looks for a new version on GitHub when it starts and every few hours, and shows an Update button in the title bar when
+          Hangar looks for a new version on GitHub when it starts and every hour, and shows an Update button in the title bar when
           there is one.
         </div>
       ) : (

@@ -1,6 +1,7 @@
 //! Updates for the installed Hangar: it reads the latest GitHub release's
-//! `latest.json` at start (and every few hours) and, when asked, downloads that
-//! release's installer and runs it in update mode. The standalone exe and dev
+//! `latest.json` when it starts, whenever it's started again while running,
+//! and every hour; when asked, it downloads that release's installer and runs
+//! it in update mode. The standalone exe and dev
 //! builds never update themselves.
 //!
 //! `latest.json` is a release file (written by the release workflow), not the
@@ -14,6 +15,7 @@ use crate::error::{msg, AppResult};
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 use std::path::PathBuf;
+use std::sync::mpsc::{self, RecvTimeoutError};
 use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager, WebviewWindow};
@@ -24,7 +26,9 @@ const LATEST: &str = match option_env!("HANGAR_LATEST_RELEASE_URL") {
     Some(u) => u,
     None => "https://github.com/Yoinky-Prj/Hangar/releases/latest/download/latest.json",
 };
-const RECHECK: Duration = Duration::from_secs(6 * 60 * 60);
+const RECHECK: Duration = Duration::from_secs(60 * 60);
+/// After a failed check (offline, say), try again sooner.
+const RETRY: Duration = Duration::from_secs(10 * 60);
 
 /// This build's release notes and publish date. The release workflow sets them
 /// at build time, so About can show them offline; a local build has none.
@@ -64,11 +68,13 @@ struct Pending {
 pub struct Updates {
     http: reqwest::Client,
     pending: Mutex<Option<Pending>>,
+    /// Wakes the checker before its timer runs out.
+    wake: Mutex<Option<mpsc::Sender<()>>>,
 }
 
 impl Default for Updates {
     fn default() -> Self {
-        Updates { http: crate::github::client(), pending: Mutex::new(None) }
+        Updates { http: crate::github::client(), pending: Mutex::new(None), wake: Mutex::new(None) }
     }
 }
 
@@ -134,28 +140,49 @@ async fn check(app: &AppHandle) -> AppResult<Option<UpdateInfo>> {
     Ok(info)
 }
 
-/// Checks now and every few hours; every window hears about a new version.
+/// Checks now, then every hour (or sooner after a failure, or when woken by
+/// `check_now`); every window hears about a new version.
 pub fn watch(app: &AppHandle) {
     if !installed() {
         return;
     }
     // The installer of the update that just ran.
     let _ = std::fs::remove_dir_all(download_dir());
+    let (wake, woken) = mpsc::channel();
+    *app.state::<Updates>().wake.lock().unwrap_or_else(|e| e.into_inner()) = Some(wake);
     let app = app.clone();
     std::thread::spawn(move || {
         let mut told: Option<UpdateInfo> = None;
         loop {
-            match tauri::async_runtime::block_on(check(&app)) {
-                Ok(Some(found)) if told.as_ref() != Some(&found) => {
-                    let _ = app.emit("update-available", &found);
-                    told = Some(found);
+            let wait = match tauri::async_runtime::block_on(check(&app)) {
+                Ok(found) => {
+                    if let Some(found) = found {
+                        if told.as_ref() != Some(&found) {
+                            let _ = app.emit("update-available", &found);
+                            told = Some(found);
+                        }
+                    }
+                    RECHECK
                 }
-                Ok(_) => {}
-                Err(e) => eprintln!("{e}"),
+                Err(e) => {
+                    eprintln!("{e}");
+                    RETRY
+                }
+            };
+            match woken.recv_timeout(wait) {
+                Ok(()) | Err(RecvTimeoutError::Timeout) => while woken.try_recv().is_ok() {},
+                Err(RecvTimeoutError::Disconnected) => break,
             }
-            std::thread::sleep(RECHECK);
         }
     });
+}
+
+/// Hangar was started again while it was already running (it keeps one
+/// process for all its windows): check now rather than at the next hour.
+pub fn check_now(app: &AppHandle) {
+    if let Some(wake) = app.state::<Updates>().wake.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
+        let _ = wake.send(());
+    }
 }
 
 #[tauri::command]
