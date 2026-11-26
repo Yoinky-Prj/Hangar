@@ -1,7 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { CircleArrowUp, ExternalLink, LoaderCircle, RefreshCw, RotateCw } from "lucide-react";
-import { api, errText, onUpdateAvailable, onUpdateProgress, type UpdateInfo, type UpdateStatus } from "../api";
+import { api, errText, onUpdateAvailable, onUpdateInstalling, onUpdateProgress, type UpdateInfo, type UpdateStatus } from "../api";
 import { onJobsChange, runningJobs } from "../jobs";
 import { fmtBytes, fmtDate } from "../util";
 import { Modal } from "./common";
@@ -87,13 +87,16 @@ export function UpdateDialog({ current, info, onClose }: { current: string; info
   useEffect(() => {
     let off: (() => void) | undefined;
     let alive = true;
+    let offInstalling: (() => void) | undefined;
     onUpdateProgress((done, total) => {
       setProgress({ done, total });
       if (total && done >= total) setPhase("installing");
     }).then((f) => (alive ? (off = f) : f()));
+    onUpdateInstalling(() => setPhase("installing")).then((f) => (alive ? (offInstalling = f) : f()));
     return () => {
       alive = false;
       off?.();
+      offInstalling?.();
     };
   }, []);
 
@@ -101,9 +104,8 @@ export function UpdateDialog({ current, info, onClose }: { current: string; info
     setError(null);
     setPhase("downloading");
     try {
-      // Doesn't come back on success: Hangar exits once the installer starts.
+      // Doesn't come back on success: Hangar restarts as the new version.
       await api.installUpdate();
-      setPhase("installing");
     } catch (e) {
       setError(errText(e));
       setPhase("ask");
@@ -128,7 +130,7 @@ export function UpdateDialog({ current, info, onClose }: { current: string; info
               </div>
               <div className="hint" style={{ marginTop: 4 }}>
                 {phase === "installing"
-                  ? "Starting the installer…"
+                  ? `Installing Hangar ${info.version}; it reopens in a moment…`
                   : progress.total
                     ? `Downloading ${fmtBytes(progress.done)} of ${fmtBytes(progress.total)}`
                     : "Downloading…"}
@@ -158,8 +160,7 @@ export function UpdateDialog({ current, info, onClose }: { current: string; info
       </div>
       {info.notes && <div className="update-notes selectable">{info.notes}</div>}
       <div className="hint">
-        Hangar downloads the installer, closes all its windows, updates itself and starts again. Your workspaces and settings stay as
-        they are.
+        Hangar downloads the update, installs it and restarts where you left off. Your workspaces and settings stay as they are.
       </div>
       {jobs.length > 0 && (
         <div className="callout warn" style={{ marginTop: 12 }}>

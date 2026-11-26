@@ -233,9 +233,12 @@ async fn download(app: &AppHandle, http: &reqwest::Client, p: &Pending) -> AppRe
     Ok(path)
 }
 
-/// Downloads the update and hands over to its installer: Hangar exits, the
-/// installer updates it in place and starts it again. `window` is the one that
-/// asked; after the restart Hangar reopens what it showed.
+/// Downloads the update and installs it while Hangar stays open, so the
+/// update shows in Hangar's own dialog instead of the installer's window:
+/// a running exe can't be overwritten but can be renamed, so this one moves
+/// aside, the installer runs silently, and the new version starts once this
+/// process has exited. `window` is the one that asked; after the restart
+/// Hangar reopens what it showed.
 #[tauri::command]
 pub async fn install_update(app: AppHandle, window: WebviewWindow) -> AppResult<()> {
     let updates = app.state::<Updates>();
@@ -247,17 +250,96 @@ pub async fn install_update(app: AppHandle, window: WebviewWindow) -> AppResult<
 
     let showing = app.state::<crate::launch::Windows>().showing_in(window.label());
     let _ = crate::settings::set_last_workspace(&app, showing.as_deref());
-    // /P: progress only, no questions (it closes a still-running Hangar itself).
-    // /UPDATE: keeps the shortcuts as the user chose them. /R: starts Hangar after.
-    std::process::Command::new(&setup)
-        .args(["/P", "/UPDATE", "/R"])
+
+    let exe = std::env::current_exe()?;
+    let aside = old_exe(&exe);
+    let _ = std::fs::remove_file(&aside);
+    if std::fs::rename(&exe, &aside).is_err() {
+        // Can't move it (no write access to the folder?): let the installer
+        // close Hangar and show its own progress window instead.
+        std::process::Command::new(&setup)
+            .args(["/P", "/UPDATE", "/R"])
+            .spawn()
+            .map_err(|e| msg(format!("Couldn't start the installer: {e}")))?;
+        exit(&app);
+    }
+
+    let _ = app.emit("update-installing", ());
+    // /S: no window. /UPDATE: keeps the shortcuts as the user chose them.
+    // No /R: this process starts the new version itself once the installer
+    // is done (the installer can't see the renamed exe, so it leaves this
+    // process running); with /R as well, Hangar would start twice.
+    let run = {
+        let setup = setup.clone();
+        tauri::async_runtime::spawn_blocking(move || std::process::Command::new(setup).args(["/S", "/UPDATE"]).status()).await
+    };
+    let installed_ok = matches!(run, Ok(Ok(ref status)) if status.success()) && exe.is_file();
+    if !installed_ok {
+        if !exe.is_file() {
+            let _ = std::fs::rename(&aside, &exe);
+        }
+        let why = match run {
+            Ok(Ok(status)) => format!("the installer stopped with code {}", status.code().unwrap_or(-1)),
+            Ok(Err(e)) => format!("the installer couldn't start: {e}"),
+            Err(e) => e.to_string(),
+        };
+        return Err(msg(format!("The update couldn't be installed ({why}). Hangar is unchanged.")));
+    }
+
+    let next = std::process::Command::new(&exe)
+        .args(["--after-update", &std::process::id().to_string()])
         .spawn()
-        .map_err(|e| msg(format!("Couldn't start the installer: {e}")))?;
-    // Exit at once, like closing the last window, but without letting each
-    // window's close overwrite the workspace remembered above.
+        .map_err(|e| msg(format!("The update is installed, but the new version didn't start ({e}). Start Hangar again.")))?;
+    // Hangar is in front right now; without this, Windows keeps the new
+    // version's window behind whatever gets focus once this one is gone.
+    #[cfg(windows)]
+    unsafe {
+        let _ = windows::Win32::UI::WindowsAndMessaging::AllowSetForegroundWindow(next.id());
+    }
+    exit(&app);
+}
+
+/// Exits at once, like closing the last window, but without letting each
+/// window's close overwrite the workspace remembered for the restart.
+fn exit(app: &AppHandle) -> ! {
     app.cleanup_before_exit();
     std::process::exit(0);
 }
+
+/// Where the running exe moves during an update.
+fn old_exe(exe: &std::path::Path) -> PathBuf {
+    exe.with_extension("exe.old")
+}
+
+/// Started by the previous version at the end of an update
+/// (`--after-update <pid>`): wait for it to exit, since it still holds the
+/// single-instance lock, then delete its exe. Call before the app is built.
+pub fn finish_update() {
+    let args: Vec<String> = std::env::args().collect();
+    let Some(i) = args.iter().position(|a| a == "--after-update") else { return };
+    if let Some(pid) = args.get(i + 1).and_then(|p| p.parse::<u32>().ok()) {
+        wait_for_exit(pid, Duration::from_secs(15));
+    }
+    if let Ok(exe) = std::env::current_exe() {
+        let _ = std::fs::remove_file(old_exe(&exe));
+    }
+}
+
+#[cfg(windows)]
+fn wait_for_exit(pid: u32, limit: Duration) {
+    use windows::Win32::Foundation::CloseHandle;
+    use windows::Win32::System::Threading::{OpenProcess, WaitForSingleObject, PROCESS_SYNCHRONIZE};
+    unsafe {
+        // Already gone if it can't be opened.
+        if let Ok(h) = OpenProcess(PROCESS_SYNCHRONIZE, false, pid) {
+            WaitForSingleObject(h, limit.as_millis() as u32);
+            let _ = CloseHandle(h);
+        }
+    }
+}
+
+#[cfg(not(windows))]
+fn wait_for_exit(_pid: u32, _limit: Duration) {}
 
 #[cfg(test)]
 mod tests {
@@ -289,6 +371,12 @@ mod tests {
         assert!(newer(&latest("0.10.0"), "0.9.0").is_some(), "numeric, not text, order");
         assert!(newer(&latest("v0.2.0"), "0.1.0").is_some(), "a leading v is fine");
         assert!(newer(&latest("soon"), "0.1.0").is_none(), "not a version");
+    }
+
+    #[test]
+    fn running_exe_moves_next_to_itself() {
+        let p = old_exe(std::path::Path::new(r"D:\Apps\Hangar\hangar.exe"));
+        assert_eq!(p, std::path::Path::new(r"D:\Apps\Hangar\hangar.exe.old"));
     }
 
     #[test]

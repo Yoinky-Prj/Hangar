@@ -328,7 +328,7 @@ export const api = {
   environment: () => invoke<Environment>("environment"),
   updateStatus: () => invoke<UpdateStatus>("update_status"),
   checkForUpdate: () => invoke<UpdateInfo | null>("check_for_update"),
-  /** Downloads and runs the installer; Hangar exits and the installer starts it again. */
+  /** Downloads and installs the update; on success Hangar restarts as the new version and this never returns. */
   installUpdate: () => invoke<void>("install_update"),
 
   inspectFolder: (path: string) => invoke<FolderInspection>("inspect_folder", { path }),
@@ -398,6 +398,11 @@ export function onJobProgress(cb: (p: JobProgress) => void): Promise<UnlistenFn>
 
 export function onUpdateAvailable(cb: (u: UpdateInfo) => void): Promise<UnlistenFn> {
   return listen<UpdateInfo>("update-available", (e) => cb(e.payload));
+}
+
+/** The download is done and the installer is running (Hangar restarts when it's finished). */
+export function onUpdateInstalling(cb: () => void): Promise<UnlistenFn> {
+  return listen("update-installing", () => cb());
 }
 
 /** Bytes of the installer downloaded so far, and its size when known. */

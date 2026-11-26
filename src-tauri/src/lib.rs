@@ -15,6 +15,7 @@ mod workspace;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    updates::finish_update();
     jumplist::init_process();
     tauri::Builder::default()
         // First, so a second launch hands over its arguments before anything starts.
