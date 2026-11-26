@@ -1,0 +1,64 @@
+name: Release
+
+# Publishing a GitHub release tagged vX.Y.Z builds Hangar for Windows and
+# attaches to it:
+#   Hangar_X.Y.Z_x64-setup.exe     the installer; installed copies update from it
+#   Hangar_X.Y.Z_x64-portable.exe  the standalone exe (doesn't update itself)
+# The tag is the version: the app and the installer get it from there, so
+# tauri.conf.json's version doesn't need bumping.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event.release.tag_name }}
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      TAG: ${{ github.event.release.tag_name }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Version from the tag
+        id: version
+        run: |
+          $v = $env:TAG -replace '^v', ''
+          if ($v -notmatch '^\d+\.\d+\.\d+$') { throw "The release tag must look like v1.2.3 (got '$env:TAG')." }
+          "value=$v" >> $env:GITHUB_OUTPUT
+          # Merged over tauri.conf.json for this build only.
+          @{ version = $v } | ConvertTo-Json | Set-Content "$env:RUNNER_TEMP/release.conf.json"
+
+      - name: Install packages
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run tauri build --bundles nsis --config "$env:RUNNER_TEMP/release.conf.json"
+
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          $release = "src-tauri/target/release"
+          $setup = "$release/bundle/nsis/Hangar_${env:VERSION}_x64-setup.exe"
+          if (-not (Test-Path $setup)) { throw "The installer wasn't built: $setup" }
+          $portable = "$env:RUNNER_TEMP/Hangar_${env:VERSION}_x64-portable.exe"
+          Copy-Item "$release/hangar.exe" $portable
+          gh release upload $env:TAG $setup $portable --clobber --repo $env:GITHUB_REPOSITORY

@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Hangar app icon. Regenerate the icon files with: bunx tauri icon src-tauri/app-icon.svg
+       A barrel-roof hangar seen from three-quarters, doors open, with three crates inside in the
+       app's section colors (blue = Projects, teal = Reference, amber = Archive). -->
+  <defs>
+    <clipPath id="tile">
+      <rect x="64" y="64" width="896" height="896" rx="208" />
+    </clipPath>
+    <linearGradient id="sky" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#6fa3ff" />
+      <stop offset="0.55" stop-color="#3a6ee6" />
+      <stop offset="1" stop-color="#2447b8" />
+    </linearGradient>
+    <radialGradient id="sun" cx="0.82" cy="0.18" r="0.5">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.35" />
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="apron" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1f3f9f" />
+      <stop offset="1" stop-color="#142b73" />
+    </linearGradient>
+    <linearGradient id="roof" x1="0" y1="0" x2="1" y2="0.6">
+      <stop offset="0" stop-color="#ffffff" />
+      <stop offset="1" stop-color="#cfdcfb" />
+    </linearGradient>
+    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" />
+      <stop offset="1" stop-color="#e3eaff" />
+    </linearGradient>
+    <linearGradient id="side" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#aebff0" />
+      <stop offset="1" stop-color="#93a8e6" />
+    </linearGradient>
+    <linearGradient id="inside" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0c1a4a" />
+      <stop offset="1" stop-color="#1a2f78" />
+    </linearGradient>
+    <radialGradient id="lamp" cx="0.5" cy="0" r="0.75">
+      <stop offset="0" stop-color="#ffe7a8" stop-opacity="0.55" />
+      <stop offset="1" stop-color="#ffe7a8" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="crateBlue" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7fb0ff" />
+      <stop offset="1" stop-color="#4c82f0" />
+    </linearGradient>
+    <linearGradient id="crateTeal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#52dcc6" />
+      <stop offset="1" stop-color="#27a996" />
+    </linearGradient>
+    <linearGradient id="crateAmber" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffcf63" />
+      <stop offset="1" stop-color="#e9a02c" />
+    </linearGradient>
+  </defs>
+
+  <g clip-path="url(#tile)">
+    <!-- sky and apron -->
+    <rect x="64" y="64" width="896" height="896" fill="url(#sky)" />
+    <rect x="64" y="64" width="896" height="896" fill="url(#sun)" />
+    <path d="M64 760 L960 676 V960 H64 Z" fill="url(#apron)" />
+    <!-- apron markings leading to the door -->
+    <g fill="#ffd166" opacity="0.9">
+      <rect x="410" y="812" width="42" height="12" rx="6" />
+      <rect x="402" y="858" width="58" height="15" rx="7.5" />
+      <rect x="392" y="912" width="78" height="18" rx="9" />
+    </g>
+    <!-- shadow -->
+    <ellipse cx="520" cy="782" rx="380" ry="40" fill="#08174d" opacity="0.35" />
+
+    <!-- barrel roof and side wall (behind the front face) -->
+    <path d="M170 640 A260 260 0 0 1 314 407.5 L474 327.5 A260 260 0 0 1 850 560 V700 L690 780 Z" fill="url(#roof)" />
+    <!-- roof ribs -->
+    <g fill="none" stroke="#b4c6f5" stroke-width="10" stroke-linecap="round">
+      <path d="M202 624 A260 260 0 0 1 722 624" />
+      <path d="M234 608 A260 260 0 0 1 754 608" />
+      <path d="M266 592 A260 260 0 0 1 786 592" />
+      <path d="M298 576 A260 260 0 0 1 818 576" />
+    </g>
+    <!-- shaded side wall -->
+    <path d="M690 640 L850 560 V700 L690 780 Z" fill="url(#side)" />
+    <path d="M730 620 V760 M770 600 V740 M810 580 V720" stroke="#8399dc" stroke-width="6" opacity="0.7" />
+
+    <!-- front face -->
+    <path d="M170 780 V640 A260 260 0 0 1 690 640 V780 Z" fill="url(#face)" />
+    <path d="M170 780 V640 A260 260 0 0 1 690 640 V780" fill="none" stroke="#ffffff" stroke-width="8" />
+    <!-- round vent -->
+    <circle cx="430" cy="470" r="30" fill="#1a2f78" />
+    <circle cx="430" cy="470" r="30" fill="none" stroke="#c8d6fb" stroke-width="8" />
+    <path d="M405 470 H455 M430 445 V495" stroke="#c8d6fb" stroke-width="6" />
+
+    <!-- open door: interior with lamp light -->
+    <rect x="252" y="556" width="356" height="224" rx="14" fill="url(#inside)" />
+    <rect x="252" y="556" width="356" height="224" rx="14" fill="url(#lamp)" />
+    <!-- crates in the section colors -->
+    <g>
+      <rect x="280" y="680" width="96" height="100" rx="8" fill="url(#crateBlue)" />
+      <rect x="280" y="680" width="96" height="16" rx="6" fill="#ffffff" opacity="0.35" />
+      <path d="M290 712 H366 M290 744 H366" stroke="#2f5fc8" stroke-width="5" opacity="0.6" />
+
+      <rect x="388" y="640" width="96" height="140" rx="8" fill="url(#crateTeal)" />
+      <rect x="388" y="640" width="96" height="16" rx="6" fill="#ffffff" opacity="0.35" />
+      <path d="M398 680 H474 M398 716 H474 M398 752 H474" stroke="#1b8676" stroke-width="5" opacity="0.6" />
+
+      <rect x="496" y="704" width="84" height="76" rx="8" fill="url(#crateAmber)" />
+      <rect x="496" y="704" width="84" height="15" rx="6" fill="#ffffff" opacity="0.4" />
+      <path d="M506 740 H570" stroke="#b7781a" stroke-width="5" opacity="0.6" />
+    </g>
+    <!-- slid-open door panels -->
+    <g>
+      <rect x="196" y="556" width="56" height="224" fill="#d6e0fb" />
+      <rect x="608" y="556" width="56" height="224" fill="#d6e0fb" />
+      <path d="M214 572 V766 M234 572 V766 M626 572 V766 M646 572 V766" stroke="#b3c3ee" stroke-width="6" />
+    </g>
+    <!-- door frame -->
+    <path d="M196 780 V556 H664 V780" fill="none" stroke="#ffffff" stroke-width="10" stroke-linejoin="round" />
+
+    <!-- ground line -->
+    <path d="M150 782 H700 L870 702" fill="none" stroke="#ffffff" stroke-opacity="0.85" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+
+  <!-- tile edge highlight -->
+  <rect x="66" y="66" width="892" height="892" rx="206" fill="none" stroke="#ffffff" stroke-opacity="0.22" stroke-width="4" />
+</svg>
