@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Search,
   Star,
+  X,
 } from "lucide-react";
 import {
   api,
@@ -507,9 +508,14 @@ export function AddProjectDialog({
             <div className="search" style={{ flex: 1, width: "auto" }}>
               <Search size={14} />
               <input className="input" placeholder="Filter repos" value={filter} onChange={(e) => setFilter(e.target.value)} autoFocus />
+              {filter && (
+                <button className="search-clear" aria-label="Clear filter" onClick={() => setFilter("")}>
+                  <X size={13} />
+                </button>
+              )}
             </div>
             <button className="btn icon" title="Reload your repos from GitHub" onClick={loadRepos} disabled={reposLoading}>
-              <RefreshCw size={15} className={reposLoading ? "spin" : ""} />
+              <RefreshCw size={14} className={reposLoading ? "spin" : ""} />
             </button>
           </div>
           <div className="owners">
@@ -536,7 +542,7 @@ export function AddProjectDialog({
               shown.map((r) => repoItem(r, pick?.fullName === r.fullName, () => setPick(r)))
             )}
           </div>
-          {pick && <div style={{ marginTop: 14 }}>{sharedFields({ clone: true, namePlaceholder: pick.fullName })}</div>}
+          {pick && <div className="form-panel">{sharedFields({ clone: true, namePlaceholder: pick.fullName })}</div>}
         </>
       );
   } else if (tab === "url") {
@@ -553,6 +559,11 @@ export function AddProjectDialog({
               onChange={(e) => setUrlInput(e.target.value)}
               autoFocus
             />
+            {urlInput && (
+              <button className="search-clear" aria-label="Clear search" onClick={() => setUrlInput("")}>
+                <X size={13} />
+              </button>
+            )}
           </div>
           <button
             className="btn icon"
@@ -560,15 +571,20 @@ export function AddProjectDialog({
             disabled={!!parsed || query.length < 2 || searching}
             onClick={() => setSearchNonce((n) => n + 1)}
           >
-            <RefreshCw size={15} className={searching ? "spin" : ""} />
+            <RefreshCw size={14} className={searching ? "spin" : ""} />
           </button>
         </div>
-        <div className="hint" style={{ margin: "6px 0 10px" }}>
+        <div className="hint" style={{ margin: "7px 0 10px" }}>
           {parsed ? (
-            <>
-              <CircleCheck size={11} color="var(--ok)" /> {parsed.owner}/{parsed.repo}
-              {parsed.host !== "github.com" && ` on ${parsed.host}`}
-            </>
+            <span className="row" style={{ gap: 5 }}>
+              <CircleCheck size={12} color="var(--ok)" />
+              <span>
+                <b>
+                  {parsed.owner}/{parsed.repo}
+                </b>
+                {parsed.host !== "github.com" && ` on ${parsed.host}`}
+              </span>
+            </span>
           ) : query.length >= 2 ? (
             searching ? (
               "Searching GitHub…"
@@ -598,13 +614,13 @@ export function AddProjectDialog({
           </div>
         )}
         {alreadyNote}
-        {target && <div style={{ marginTop: 14 }}>{sharedFields({ clone: true, namePlaceholder: `${target.owner}/${target.repo}` })}</div>}
+        {target && <div className="form-panel">{sharedFields({ clone: true, namePlaceholder: `${target.owner}/${target.repo}` })}</div>}
       </>
     );
   } else if (tab === "new") {
     primary = { label: "Create", onClick: doCreate, disabled: !newName.trim() };
     body = (
-      <>
+      <div className="form-panel" style={{ marginTop: 0 }}>
         <div className="field">
           <label>Project name</label>
           <input className="input" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="my-new-project" autoFocus />
@@ -619,7 +635,7 @@ export function AddProjectDialog({
           <input type="checkbox" checked={initGit} onChange={(e) => setInitGit(e.target.checked)} />
           Start a git repository (branch <span className="mono">main</span>)
         </label>
-      </>
+      </div>
     );
   } else {
     primary = { label: "Import", onClick: doImport, disabled: !imp || !impName.trim() };
@@ -638,33 +654,37 @@ export function AddProjectDialog({
             {imp ? "Choose another folder…" : "Choose folder…"}
           </button>
           {imp && (
-            <span className="mono selectable" style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+            <span className="mono selectable" style={{ overflow: "hidden", textOverflow: "ellipsis", color: "var(--text-secondary)" }}>
               {imp.path}
             </span>
           )}
         </div>
         {imp && (
           <>
-            <div className="kv" style={{ marginBottom: 14 }}>
-              <span className="k">Git</span>
-              <span className="v">{imp.isGit ? "yes" : "not a git repo"}</span>
-              <span className="k">Remote</span>
-              <span className="v">{imp.remote ? `${imp.remote.owner}/${imp.remote.repo}` : <span className="faint">none</span>}</span>
+            <div className="card">
+              <div className="kv">
+                <span className="k">Git</span>
+                <span className="v">{imp.isGit ? "yes" : "not a git repo"}</span>
+                <span className="k">Remote</span>
+                <span className="v">{imp.remote ? `${imp.remote.owner}/${imp.remote.repo}` : <span className="faint">none</span>}</span>
+              </div>
             </div>
-            {sharedFields({
-              clone: false,
-              namePlaceholder: imp.remote ? `${imp.remote.owner}/${imp.remote.repo}` : impName || imp.folder,
-            })}
-            <div className="field">
-              <label>Folder name in workspace</label>
-              <input className="input" value={impName} onChange={(e) => setImpName(e.target.value)} />
-            </div>
-            <label className="check">
-              <input type="checkbox" checked={skipRegen} onChange={(e) => setSkipRegen(e.target.checked)} />
-              Skip rebuildable folders (node_modules, Python virtualenvs, caches, Rust target)
-            </label>
-            <div className="hint" style={{ marginTop: -4 }}>
-              These would break after the move anyway. Reinstall them in the new location (for example <span className="mono">bun install</span>).
+            <div className="form-panel">
+              {sharedFields({
+                clone: false,
+                namePlaceholder: imp.remote ? `${imp.remote.owner}/${imp.remote.repo}` : impName || imp.folder,
+              })}
+              <div className="field">
+                <label>Folder name in workspace</label>
+                <input className="input" value={impName} onChange={(e) => setImpName(e.target.value)} />
+              </div>
+              <label className="check">
+                <input type="checkbox" checked={skipRegen} onChange={(e) => setSkipRegen(e.target.checked)} />
+                Skip rebuildable folders (node_modules, Python virtualenvs, caches, Rust target)
+              </label>
+              <div className="hint" style={{ marginTop: 2 }}>
+                These would break after the move anyway. Reinstall them in the new location (for example <span className="mono">bun install</span>).
+              </div>
             </div>
           </>
         )}

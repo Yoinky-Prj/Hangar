@@ -1,0 +1,217 @@
+/* ==========================================================================
+   Hangar Design Tokens — Daylight Apron (Light) & Night Hangar (Dark)
+   Follows the Windows theme via prefers-color-scheme.
+   All foreground/background pairs are calibrated for WCAG AA (>= 4.5:1).
+   ========================================================================== */
+
+:root {
+  /* Surfaces */
+  --bg-app: #f3f5f8;
+  --bg-sidebar: #eff2f6;
+  --bg-surface: #ffffff;
+  --bg-inspector: #f8f9fc;
+  --bg-elevated: #ffffff;
+  --bg-sunken: #e9edf3;
+  --bg-hover: rgba(15, 23, 42, 0.048);
+  --bg-active: rgba(15, 23, 42, 0.082);
+  --bg-selected: rgba(37, 99, 235, 0.095);
+  --bg-selected-hover: rgba(37, 99, 235, 0.135);
+
+  /* Legacy aliases kept for compatibility */
+  --bg: var(--bg-app);
+  --panel: var(--bg-surface);
+  --panel-2: var(--bg-sunken);
+  --hover: var(--bg-hover);
+  --selected: var(--bg-selected);
+  --selected-border: rgba(37, 99, 235, 0.28);
+
+  /* Borders & Specular Highlights */
+  --border: rgba(15, 23, 42, 0.095);
+  --border-subtle: rgba(15, 23, 42, 0.055);
+  --border-strong: rgba(15, 23, 42, 0.17);
+  --specular: rgba(255, 255, 255, 0.85);
+  --ring: rgba(37, 99, 235, 0.32);
+
+  /* Typography Ink */
+  --text: #111827;
+  --text-secondary: #475467;
+  --text-muted: #5d6a7e;
+  --muted: var(--text-secondary);
+  --faint: var(--text-muted);
+
+  /* Brand Accent (Cobalt) */
+  --accent: #2563eb;
+  --accent-solid: #2563eb;
+  --accent-solid-hover: #1d4ed8;
+  --accent-solid-active: #1e40af;
+  --accent-text: #ffffff;
+  --accent-soft: rgba(37, 99, 235, 0.1);
+  --accent-border: rgba(37, 99, 235, 0.24);
+
+  /* Semantic Status */
+  --ok: #15803d;
+  --ok-soft: rgba(22, 163, 74, 0.11);
+  --ok-border: rgba(22, 163, 74, 0.24);
+
+  --warn: #a15c07;
+  --warn-soft: rgba(217, 119, 6, 0.12);
+  --warn-border: rgba(217, 119, 6, 0.28);
+
+  --danger: #c82829;
+  --danger-solid: #dc2626;
+  --danger-solid-hover: #b91c1c;
+  --danger-soft: rgba(220, 38, 38, 0.1);
+  --danger-border: rgba(220, 38, 38, 0.25);
+
+  --violet: #6d28d9;
+  --violet-soft: rgba(124, 58, 237, 0.1);
+  --violet-border: rgba(124, 58, 237, 0.24);
+
+  --teal: #0f766e;
+  --teal-soft: rgba(13, 148, 136, 0.11);
+  --teal-border: rgba(13, 148, 136, 0.25);
+
+  /* Hangar Section Identity Colors (matching app-icon.svg bays) */
+  --sec-projects: #2563eb;
+  --sec-projects-soft: rgba(37, 99, 235, 0.11);
+  --sec-reference: #0f766e;
+  --sec-reference-soft: rgba(13, 148, 136, 0.11);
+  --sec-archive: #b45309;
+  --sec-archive-soft: rgba(217, 119, 6, 0.12);
+
+  /* Elevation */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-sm: 0 2px 6px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 10px 26px rgba(15, 23, 42, 0.11), 0 2px 6px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 22px 54px rgba(15, 23, 42, 0.18), 0 4px 14px rgba(15, 23, 42, 0.08);
+  --shadow: var(--shadow-md);
+
+  /* Scrollbars & Tooltips */
+  --scroll-thumb: rgba(15, 23, 42, 0.13);
+  --scroll-thumb-hover: rgba(15, 23, 42, 0.26);
+  --scroll-thumb-active: rgba(15, 23, 42, 0.38);
+  --tip-bg: #151b26;
+  --tip-text: #f3f5f8;
+  --tip-border: rgba(255, 255, 255, 0.1);
+  --backdrop: rgba(15, 23, 42, 0.34);
+
+  /* Radii */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+  --r-pill: 999px;
+  --radius: var(--r-md);
+
+  /* Typography */
+  --font-sans: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-display: "Segoe UI Variable Display", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "Cascadia Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 110ms;
+  --dur-med: 180ms;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Surfaces — Sculpted Graphite Obsidian */
+    --bg-app: #0f1117;
+    --bg-sidebar: #11141c;
+    --bg-surface: #151922;
+    --bg-inspector: #131720;
+    --bg-elevated: #1b202c;
+    --bg-sunken: #0d1016;
+    --bg-hover: rgba(255, 255, 255, 0.052);
+    --bg-active: rgba(255, 255, 255, 0.088);
+    --bg-selected: rgba(96, 165, 250, 0.14);
+    --bg-selected-hover: rgba(96, 165, 250, 0.19);
+
+    --selected-border: rgba(110, 161, 255, 0.34);
+
+    /* Borders & Specular Highlights */
+    --border: rgba(255, 255, 255, 0.082);
+    --border-subtle: rgba(255, 255, 255, 0.048);
+    --border-strong: rgba(255, 255, 255, 0.15);
+    --specular: rgba(255, 255, 255, 0.055);
+    --ring: rgba(110, 161, 255, 0.42);
+
+    /* Typography Ink */
+    --text: #edf1f7;
+    --text-secondary: #a0abc0;
+    --text-muted: #828fa6;
+
+    /* Brand Accent (Luminous Cobalt) */
+    --accent: #6ea1ff;
+    --accent-solid: #2b6ae6;
+    --accent-solid-hover: #3b78f0;
+    --accent-solid-active: #255bc7;
+    --accent-text: #ffffff;
+    --accent-soft: rgba(110, 161, 255, 0.14);
+    --accent-border: rgba(110, 161, 255, 0.3);
+
+    /* Semantic Status */
+    --ok: #4ade80;
+    --ok-soft: rgba(74, 222, 128, 0.13);
+    --ok-border: rgba(74, 222, 128, 0.26);
+
+    --warn: #fbbf24;
+    --warn-soft: rgba(251, 191, 36, 0.13);
+    --warn-border: rgba(251, 191, 36, 0.28);
+
+    --danger: #f87171;
+    --danger-solid: #dc2626;
+    --danger-solid-hover: #ef4444;
+    --danger-soft: rgba(248, 113, 113, 0.14);
+    --danger-border: rgba(248, 113, 113, 0.3);
+
+    --violet: #c084fc;
+    --violet-soft: rgba(192, 132, 252, 0.14);
+    --violet-border: rgba(192, 132, 252, 0.28);
+
+    --teal: #2dd4bf;
+    --teal-soft: rgba(45, 212, 191, 0.13);
+    --teal-border: rgba(45, 212, 191, 0.28);
+
+    /* Hangar Section Identity Colors */
+    --sec-projects: #6ea1ff;
+    --sec-projects-soft: rgba(110, 161, 255, 0.15);
+    --sec-reference: #2dd4bf;
+    --sec-reference-soft: rgba(45, 212, 191, 0.14);
+    --sec-archive: #fbbf24;
+    --sec-archive-soft: rgba(251, 191, 36, 0.14);
+
+    /* Elevation */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.32);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.36), 0 1px 2px rgba(0, 0, 0, 0.24);
+    --shadow-md: 0 14px 36px rgba(0, 0, 0, 0.52), 0 3px 8px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 28px 64px rgba(0, 0, 0, 0.66), 0 6px 18px rgba(0, 0, 0, 0.4);
+
+    /* Scrollbars & Tooltips */
+    --scroll-thumb: rgba(255, 255, 255, 0.14);
+    --scroll-thumb-hover: rgba(255, 255, 255, 0.25);
+    --scroll-thumb-active: rgba(255, 255, 255, 0.36);
+    --tip-bg: #252b3b;
+    --tip-text: #eef2f8;
+    --tip-border: rgba(255, 255, 255, 0.14);
+    --backdrop: rgba(4, 6, 12, 0.62);
+
+    color-scheme: dark;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

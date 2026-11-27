@@ -2,16 +2,20 @@ import { useRef, useState, type ReactNode } from "react";
 import {
   Archive,
   ArrowDownToLine,
+  ArrowLeft,
   BookOpen,
   Briefcase,
+  ChevronRight,
   CircleCheck,
   CloudDownload,
+  Copy,
   FolderGit2,
   GitBranch,
   Info,
   LoaderCircle,
   Pencil,
   Undo2,
+  X,
 } from "lucide-react";
 import {
   SECTION_LABEL,
@@ -24,10 +28,11 @@ import {
   type SubmoduleInfo,
   type WorkspaceView,
 } from "../api";
-import { fmtDate, hasSubIssues, projectSubtitle, projectTitle, relTime, repoWebUrl, subIssues, uncommitted } from "../util";
+import { fmtDate, hasSubIssues, projectSubtitle, projectTitle, relTime, repoWebUrl, shortPath, subIssues, uncommitted } from "../util";
 import { BranchesSection } from "./Branches";
 import { CategoryPicker } from "./common";
 import { OpenButtons, type OpenKind } from "./Launchers";
+import type { View } from "./Sidebar";
 
 export interface Actions {
   open: (kind: OpenKind, path: string) => void;
@@ -73,75 +78,102 @@ function GitInfo({ isGit, status }: { isGit: boolean; status: GitStatus | null |
   const plus = status.unpushedCapped ? "+" : "";
   return (
     <>
-      <div className="kv">
-        <span className="k">Branch</span>
-        <span className="v">
-          {status.branch ?? (status.detached ? "detached HEAD" : "—")}
-          {status.unborn && <span className="faint"> (no commits yet)</span>}
-        </span>
-        <span className="k">Upstream</span>
-        <span className="v">
-          {status.upstream ? (
-            <>
-              {status.upstream}{" "}
-              <span className="faint">
-                · ↑{status.ahead ?? 0} ↓{status.behind ?? 0}
+      <div className="dsec-card">
+        <div className="git-summary">
+          <span className="pill branch-pill" title={status.branch ?? "Detached HEAD"}>
+            <GitBranch size={11} />
+            <span className="branch-pill-name">{status.branch ?? (status.detached ? "detached HEAD" : "—")}</span>
+          </span>
+          {status.unborn && <span className="pill">No commits yet</span>}
+          {status.conflicted > 0 && <span className="pill danger">{status.conflicted} conflicted</span>}
+          {n > 0 ? (
+            <span className="pill warn">
+              <span className="pill-dot" />
+              {n} changed
+            </span>
+          ) : (
+            !status.unborn && (
+              <span className="pill ok">
+                <span className="pill-dot" />
+                Clean
               </span>
-            </>
-          ) : (
-            <span className="faint">none</span>
+            )
           )}
-        </span>
-        <span className="k">Changes</span>
-        <span className="v">
-          {n === 0 ? (
-            <span className="faint">none</span>
-          ) : (
+          {status.upstream && (status.ahead || status.behind) ? (
+            <span className="pill accent">
+              ↑{status.ahead ?? 0} ↓{status.behind ?? 0}
+            </span>
+          ) : null}
+        </div>
+        <div className="kv">
+          <span className="k">Upstream</span>
+          <span className="v">
+            {status.upstream ? (
+              <>
+                <span className="mono">{status.upstream}</span>{" "}
+                <span className="faint" style={{ whiteSpace: "nowrap" }}>
+                  · ↑{status.ahead ?? 0} ↓{status.behind ?? 0}
+                </span>
+              </>
+            ) : (
+              <span className="faint">none</span>
+            )}
+          </span>
+          <span className="k">Changes</span>
+          <span className="v">
+            {n === 0 ? (
+              <span className="faint">none</span>
+            ) : (
+              <>
+                <span style={{ whiteSpace: "nowrap" }}>{status.staged} staged</span> ·{" "}
+                <span style={{ whiteSpace: "nowrap" }}>{status.modified} modified</span> ·{" "}
+                <span style={{ whiteSpace: "nowrap" }}>{status.untracked} untracked</span>
+                {status.conflicted > 0 && (
+                  <span style={{ color: "var(--danger)", whiteSpace: "nowrap" }}> · {status.conflicted} conflicted</span>
+                )}
+              </>
+            )}
+          </span>
+          <span className="k">Unpushed</span>
+          <span className="v">
+            {status.unpushed === 0 ? (
+              <span className="faint">none</span>
+            ) : (
+              `${status.unpushed}${plus} commit${status.unpushed === 1 ? "" : "s"} not on any remote`
+            )}
+          </span>
+          <span className="k">Last commit</span>
+          <span className="v selectable">
+            {status.lastCommit ? (
+              <>
+                {status.lastCommit.summary}{" "}
+                <span className="faint">
+                  · {status.lastCommit.author} · {relTime(status.lastCommit.time)}
+                </span>
+              </>
+            ) : (
+              <span className="faint">—</span>
+            )}
+          </span>
+          <span className="k">Remotes</span>
+          <span className="v mono selectable">
+            {status.remotes.length ? (
+              status.remotes.map((r) => (
+                <div key={r.name}>
+                  {r.name}: {r.url}
+                </div>
+              ))
+            ) : (
+              <span className="faint">none</span>
+            )}
+          </span>
+          {status.worktrees > 0 && (
             <>
-              {status.staged} staged · {status.modified} modified · {status.untracked} untracked
-              {status.conflicted > 0 && <span style={{ color: "var(--danger)" }}> · {status.conflicted} conflicted</span>}
+              <span className="k">Worktrees</span>
+              <span className="v">{status.worktrees}</span>
             </>
           )}
-        </span>
-        <span className="k">Unpushed</span>
-        <span className="v">
-          {status.unpushed === 0 ? (
-            <span className="faint">none</span>
-          ) : (
-            `${status.unpushed}${plus} commit${status.unpushed === 1 ? "" : "s"} not on any remote`
-          )}
-        </span>
-        <span className="k">Last commit</span>
-        <span className="v selectable">
-          {status.lastCommit ? (
-            <>
-              {status.lastCommit.summary}{" "}
-              <span className="faint">
-                · {status.lastCommit.author} · {relTime(status.lastCommit.time)}
-              </span>
-            </>
-          ) : (
-            <span className="faint">—</span>
-          )}
-        </span>
-        <span className="k">Remotes</span>
-        <span className="v mono selectable">
-          {status.remotes.length ? (
-            status.remotes.map((r) => (
-              <div key={r.name}>
-                {r.name}: {r.url}
-              </div>
-            ))
-          ) : (
-            <span className="faint">none</span>
-          )}
-        </span>
-        {status.worktrees > 0 && (
-          <>
-            <span className="k">Worktrees</span>
-            <span className="v">{status.worktrees}</span>
-          </>
-        )}
+        </div>
       </div>
       {status.unpushed > 0 && status.remotes.length === 0 && (
         <div className="callout warn" style={{ marginTop: 10 }}>
@@ -313,6 +345,7 @@ function SubmoduleList({ list, onSelect }: { list: SubmoduleInfo[] | null | unde
             <FolderGit2 size={15} className="sub-icon" />
             <span className="sub-item-path">{sm.path}</span>
             <span className={`hint ${dirty ? "warn-text" : ""}`}>{subSummary(sm)}</span>
+            <ChevronRight size={13} style={{ color: "var(--text-muted)", flex: "none" }} />
           </button>
         );
       })}
@@ -327,6 +360,7 @@ export function DetailPanel({
   categories,
   env,
   actions,
+  onClose,
 }: {
   project: ProjectEntry;
   status: GitStatus | null | undefined;
@@ -334,6 +368,7 @@ export function DetailPanel({
   categories: Category[];
   env: Environment;
   actions: Actions;
+  onClose: () => void;
 }) {
   const meta = project.meta;
   const remote = meta?.source.remote;
@@ -342,16 +377,31 @@ export function DetailPanel({
 
   return (
     <>
-      <EditableTitle key={project.path} project={project} onRename={(n) => actions.rename(project, n)} />
-      {subtitle && <div className="title-sub">{subtitle}</div>}
-      <div className="path" title="Click to copy the path" onClick={() => actions.copyPath(project.path)}>
-        {project.path}
-      </div>
-      <div className="row" style={{ marginTop: 10, flexWrap: "wrap", gap: 6 }}>
-        <span className="pill">{SECTION_LABEL[project.section]}</span>
-        {project.section === "archive" && meta?.archivedFrom && <span className="pill">from {SECTION_LABEL[meta.archivedFrom]}</span>}
-        {meta && <span className="pill">{SOURCE_LABEL[meta.source.kind]}</span>}
-        {!project.managed && <span className="pill warn">Not managed</span>}
+      <div className="detail-header">
+        <div className="row" style={{ alignItems: "flex-start", gap: 6 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <EditableTitle key={project.path} project={project} onRename={(n) => actions.rename(project, n)} />
+            {subtitle && <div className="title-sub">{subtitle}</div>}
+          </div>
+          <button
+            className="btn ghost icon small"
+            onClick={onClose}
+            aria-label="Show workspace overview"
+            title="Show workspace overview"
+          >
+            <X size={14} />
+          </button>
+        </div>
+        <button className="path-bar" title={`${project.path}\nClick to copy`} onClick={() => actions.copyPath(project.path)}>
+          <span className="path-bar-text">{shortPath(project.path, 36)}</span>
+          <Copy size={12} className="path-copy-icon" />
+        </button>
+        <div className="detail-badges">
+          <span className={`pill sec-${project.section}`}>{SECTION_LABEL[project.section]}</span>
+          {project.section === "archive" && meta?.archivedFrom && <span className="pill">from {SECTION_LABEL[meta.archivedFrom]}</span>}
+          {meta && <span className="pill">{SOURCE_LABEL[meta.source.kind]}</span>}
+          {!project.managed && <span className="pill warn">Not managed</span>}
+        </div>
       </div>
 
       {!project.managed && (
@@ -454,25 +504,27 @@ export function DetailPanel({
       {meta && (
         <div className="dsec">
           <h3>About</h3>
-          <div className="kv">
-            <span className="k">Folder</span>
-            <span className="v mono selectable">{project.folder}</span>
-            <span className="k">Added</span>
-            <span className="v">{fmtDate(meta.createdAt)}</span>
-            {meta.source.importedFrom && (
-              <>
-                <span className="k">Imported from</span>
-                <span className="v mono selectable">{meta.source.importedFrom}</span>
-              </>
-            )}
-            {meta.archivedAt && (
-              <>
-                <span className="k">Archived</span>
-                <span className="v">{fmtDate(meta.archivedAt)}</span>
-              </>
-            )}
-            <span className="k">Hangar ID</span>
-            <span className="v mono selectable">{meta.id.slice(0, 8)}</span>
+          <div className="dsec-card">
+            <div className="kv">
+              <span className="k">Folder</span>
+              <span className="v mono selectable">{project.folder}</span>
+              <span className="k">Added</span>
+              <span className="v">{fmtDate(meta.createdAt)}</span>
+              {meta.source.importedFrom && (
+                <>
+                  <span className="k">Imported from</span>
+                  <span className="v mono selectable">{meta.source.importedFrom}</span>
+                </>
+              )}
+              {meta.archivedAt && (
+                <>
+                  <span className="k">Archived</span>
+                  <span className="v">{fmtDate(meta.archivedAt)}</span>
+                </>
+              )}
+              <span className="k">Hangar ID</span>
+              <span className="v mono selectable">{meta.id.slice(0, 8)}</span>
+            </div>
           </div>
         </div>
       )}
@@ -485,25 +537,42 @@ export function SubmoduleDetail({
   sm,
   env,
   actions,
+  onClose,
 }: {
   parent: ProjectEntry;
   sm: SubmoduleInfo;
   env: Environment;
   actions: Actions;
+  onClose: () => void;
 }) {
   const name = sm.path.split("/").pop() ?? sm.path;
   return (
     <>
-      <h2 className="selectable">{name}</h2>
-      <div className="path" title="Click to copy the path" onClick={() => actions.copyPath(sm.absPath)}>
-        {sm.absPath}
-      </div>
-      <div className="row" style={{ marginTop: 10, flexWrap: "wrap", gap: 6 }}>
-        <span className="pill">Submodule</span>
-        <button className="pill pill-link" onClick={() => actions.select(parent.path)} title="Show the parent repo">
-          in {projectTitle(parent)}
+      <div className="detail-header">
+        <div className="row" style={{ marginBottom: 8 }}>
+          <button className="pill pill-link" onClick={() => actions.select(parent.path)} title="Show the parent repo">
+            <ArrowLeft size={11} />
+            {projectTitle(parent)}
+          </button>
+          <div className="spacer" />
+          <button
+            className="btn ghost icon small"
+            onClick={onClose}
+            aria-label="Show workspace overview"
+            title="Show workspace overview"
+          >
+            <X size={14} />
+          </button>
+        </div>
+        <h2 className="selectable">{name}</h2>
+        <button className="path-bar" title={`${sm.absPath}\nClick to copy`} onClick={() => actions.copyPath(sm.absPath)}>
+          <span className="path-bar-text">{shortPath(sm.absPath, 36)}</span>
+          <Copy size={12} className="path-copy-icon" />
         </button>
-        {sm.moved && <span className="pill violet">moved</span>}
+        <div className="detail-badges">
+          <span className="pill">Submodule</span>
+          {sm.moved && <span className="pill violet">moved</span>}
+        </div>
       </div>
 
       {!sm.initialized && (
@@ -526,13 +595,15 @@ export function SubmoduleDetail({
 
       <div className="dsec">
         <h3>Pinned commit</h3>
-        <div className="kv">
-          <span className="k">Parent records</span>
-          <span className="v mono">{sm.recorded ?? "—"}</span>
-          <span className="k">Checked out</span>
-          <span className="v mono">{sm.checkedOut ?? "—"}</span>
-          <span className="k">URL</span>
-          <span className="v mono selectable">{sm.url ?? "—"}</span>
+        <div className="dsec-card">
+          <div className="kv">
+            <span className="k">Parent records</span>
+            <span className="v mono">{sm.recorded ?? "—"}</span>
+            <span className="k">Checked out</span>
+            <span className="v mono">{sm.checkedOut ?? "—"}</span>
+            <span className="k">URL</span>
+            <span className="v mono selectable">{sm.url ?? "—"}</span>
+          </div>
         </div>
         {sm.moved && (
           <div className="callout warn" style={{ marginTop: 10 }}>
@@ -574,14 +645,19 @@ export function Summary({
   statuses,
   subs,
   onSelect,
+  onCopyPath,
+  onNavigate,
 }: {
   ws: WorkspaceView;
   projects: ProjectEntry[];
   statuses: Record<string, GitStatus | null>;
   subs: Record<string, SubmoduleInfo[] | null>;
   onSelect: (p: ProjectEntry) => void;
+  onCopyPath: (path: string) => void;
+  onNavigate: (v: View) => void;
 }) {
   const by = (s: Section) => projects.filter((p) => p.section === s).length;
+  const unmanaged = projects.filter((p) => !p.managed).length;
   const active = projects.filter((p) => p.section !== "archive");
   const loading = active.some((p) => p.isGit && !(p.path in statuses));
   const attention = active
@@ -591,26 +667,37 @@ export function Summary({
 
   return (
     <>
-      <h2>{ws.config.name}</h2>
-      <div className="path selectable">{ws.root}</div>
+      <div className="detail-header">
+        <h2>{ws.config.name}</h2>
+        <button className="path-bar" title={`${ws.root}\nClick to copy`} onClick={() => onCopyPath(ws.root)}>
+          <span className="path-bar-text">{shortPath(ws.root, 36)}</span>
+          <Copy size={12} className="path-copy-icon" />
+        </button>
+      </div>
       <div className="dsec">
+        <h3>Overview</h3>
         <div className="stat-grid">
-          <div className="stat">
+          <button className="stat tone-projects" onClick={() => onNavigate({ kind: "section", section: "projects" })}>
             <div className="n">{by("projects")}</div>
             <div className="l">Projects</div>
-          </div>
-          <div className="stat">
+          </button>
+          <button className="stat tone-reference" onClick={() => onNavigate({ kind: "section", section: "reference" })}>
             <div className="n">{by("reference")}</div>
             <div className="l">Reference</div>
-          </div>
-          <div className="stat">
+          </button>
+          <button className="stat tone-archive" onClick={() => onNavigate({ kind: "section", section: "archive" })}>
             <div className="n">{by("archive")}</div>
             <div className="l">Archived</div>
-          </div>
-          <div className="stat">
-            <div className="n">{projects.filter((p) => !p.managed).length}</div>
-            <div className="l">Not managed yet</div>
-          </div>
+          </button>
+          <button
+            className="stat tone-unmanaged"
+            disabled={unmanaged === 0}
+            onClick={() => onNavigate({ kind: "unmanaged" })}
+            style={unmanaged === 0 ? { cursor: "default", opacity: 0.72 } : undefined}
+          >
+            <div className="n">{unmanaged}</div>
+            <div className="l">Not managed</div>
+          </button>
         </div>
       </div>
       <div className="dsec">
@@ -618,7 +705,7 @@ export function Summary({
           Needs attention {loading && <LoaderCircle size={12} className="spin" />}
         </h3>
         {attention.length === 0 ? (
-          <div className="hint">{loading ? "Checking repos…" : "Everything active is committed and pushed."}</div>
+          <div className="dsec-card hint">{loading ? "Checking repos…" : "Everything active is committed and pushed."}</div>
         ) : (
           <div className="attention">
             {attention.map(({ p, s, si }) => {
@@ -630,18 +717,32 @@ export function Summary({
               ].filter(Boolean);
               return (
                 <button key={p.path} onClick={() => onSelect(p)}>
-                  <FolderGit2 size={15} color="var(--accent)" />
-                  <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {projectTitle(p)}
-                  </span>
-                  <span className="hint">{parts.join(" · ")}</span>
+                  <FolderGit2 size={15} color="var(--accent)" style={{ flex: "none" }} />
+                  <div className="attention-body">
+                    <div className="attention-name">{projectTitle(p)}</div>
+                    <div className="attention-meta">{parts.join(" · ")}</div>
+                  </div>
+                  <ChevronRight size={13} style={{ color: "var(--text-muted)", flex: "none" }} />
                 </button>
               );
             })}
           </div>
         )}
       </div>
-      <div className="dsec hint">Select a project to see its details. Right-click a project for more actions.</div>
+      <div className="dsec">
+        <div className="kbd-bar">
+          <span>
+            <kbd>Ctrl+F</kbd> Search
+          </span>
+          <span>
+            <kbd>Ctrl+N</kbd> Add
+          </span>
+          <span>
+            <kbd>F5</kbd> Refresh
+          </span>
+          <span>Right-click for actions</span>
+        </div>
+      </div>
     </>
   );
 }

@@ -8,12 +8,14 @@ import {
   CircleCheck,
   CloudDownload,
   Copy,
+  FolderSearch,
+  Layers,
   LoaderCircle,
   Plus,
   RefreshCw,
   Search,
-  Settings as SettingsIcon,
   Undo2,
+  X,
 } from "lucide-react";
 import {
   api,
@@ -593,65 +595,85 @@ export function WorkspaceScreen({
       </>
     );
 
+  const totalInView = useMemo(() => projects.filter(viewFilter(view)).length, [projects, view]);
+
+  const viewBadge = (() => {
+    switch (view.kind) {
+      case "section":
+        if (view.section === "projects") return { icon: <Briefcase size={14} />, tone: "projects" };
+        if (view.section === "reference") return { icon: <BookOpen size={14} />, tone: "reference" };
+        return { icon: <Archive size={14} />, tone: "archive" };
+      case "all":
+        return { icon: <Layers size={14} />, tone: "" };
+      case "unmanaged":
+        return { icon: <FolderSearch size={14} />, tone: "warn" };
+      case "category": {
+        const cat = categories.find((c) => c.id === view.id);
+        return { icon: <span className="dot" style={{ background: cat?.color ?? "var(--accent)" }} />, tone: "" };
+      }
+    }
+  })();
+
   return (
     <div className="shell">
       <header className="topbar" data-tauri-drag-region>
-        <div className="brand drag-through" data-tauri-drag-region>
-          <div className="logo">
-            <HangarMark size={18} />
+        <div className="topbar-left" data-tauri-drag-region>
+          <div className="brand drag-through" data-tauri-drag-region>
+            <div className="logo">
+              <HangarMark size={15} />
+            </div>
+            Hangar
           </div>
-          Hangar
-        </div>
-        <div className="crumbs" data-tauri-drag-region>
+          <span className="topbar-slash">/</span>
           <WorkspaceSwitcher
             ws={ws}
             setSettings={setSettings}
             onOpen={openOther}
             onSetup={(path, entryCount) => setSetupPath({ path, entryCount })}
           />
-          <ChevronRight size={14} />
-          <b data-tauri-drag-region title={viewTitle(view)}>
-            {viewLabel(view, categories)}
-          </b>
-          <span className="faint" data-tauri-drag-region title={`${shown.length} shown`}>
-            · {shown.length}
-          </span>
+          <div className="spacer" data-tauri-drag-region />
         </div>
-        <div className="spacer" data-tauri-drag-region />
-        <div className="search">
-          <Search size={14} />
-          <input ref={searchRef} className="input" placeholder="Search  (Ctrl+F)" value={search} onChange={(e) => setSearch(e.target.value)} />
+
+        <div className="topbar-center">
+          <div className={`search ${!search ? "has-kbd" : ""}`}>
+            <Search size={14} />
+            <input
+              ref={searchRef}
+              className="input"
+              placeholder="Search projects…"
+              aria-label="Search projects"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  if (search) setSearch("");
+                  else e.currentTarget.blur();
+                }
+              }}
+            />
+            {search ? (
+              <button
+                className="search-clear"
+                aria-label="Clear search"
+                title="Clear search"
+                onClick={() => {
+                  setSearch("");
+                  searchRef.current?.focus();
+                }}
+              >
+                <X size={13} />
+              </button>
+            ) : (
+              <kbd className="kbd-hint">Ctrl+F</kbd>
+            )}
+          </div>
         </div>
-        <button className="btn icon" title="Refresh (F5)" onClick={refresh}>
-          <RefreshCw size={15} className={loading ? "spin" : ""} />
-        </button>
-        <button
-          className="btn bulk"
-          onClick={() => runAll("fetch")}
-          disabled={!!bulk}
-          title="Fetch every repo and submodule that has a remote (archived ones are skipped). Files and branches don't change."
-        >
-          {bulk?.kind === "fetch" ? <LoaderCircle size={15} className="spin" /> : <CloudDownload size={15} />}
-          <span className="bulk-label">{bulk?.kind === "fetch" ? `Fetching ${bulk.done}/${bulk.total}` : "Fetch all"}</span>
-        </button>
-        <button
-          className="btn bulk"
-          onClick={() => runAll("pull")}
-          disabled={!!bulk}
-          title="Fast-forward every repo and submodule that's on a branch with an upstream (archived ones are skipped). Never merges, never overwrites local changes."
-        >
-          {bulk?.kind === "pull" ? <LoaderCircle size={15} className="spin" /> : <ArrowDownToLine size={15} />}
-          <span className="bulk-label">{bulk?.kind === "pull" ? `Pulling ${bulk.done}/${bulk.total}` : "Pull all"}</span>
-        </button>
-        <button className="btn primary" onClick={() => setAddTab("github")} title="Add project (Ctrl+N)">
-          <Plus size={15} />
-          Add project
-        </button>
-        <button className="btn icon" title="Settings" onClick={() => setSettingsTab("github")}>
-          <SettingsIcon size={15} />
-        </button>
-        <UpdateButton />
-        <WindowControls />
+
+        <div className="topbar-right" data-tauri-drag-region>
+          <div className="spacer" data-tauri-drag-region />
+          <UpdateButton />
+          <WindowControls />
+        </div>
       </header>
 
       <Sidebar
@@ -662,10 +684,48 @@ export function WorkspaceScreen({
           setView(v);
           setSelected(null);
         }}
+        account={account}
+        onAddProject={() => setAddTab("github")}
         onAddCategory={() => setSettingsTab("categories")}
+        onOpenSettings={(tab) => setSettingsTab(tab)}
       />
 
       <main className="main">
+        <div className="view-bar">
+          <div className="view-bar-title">
+            <span className={`view-bar-icon ${viewBadge.tone ? `tone-${viewBadge.tone}` : ""}`}>{viewBadge.icon}</span>
+            <h1 title={viewTitle(view)}>{viewLabel(view, categories)}</h1>
+            <span className="view-bar-count" title={`${shown.length} shown`}>
+              {search.trim() ? `${shown.length} / ${totalInView}` : shown.length}
+            </span>
+          </div>
+          <div className="spacer" />
+          <div className="view-bar-actions">
+            <button className="btn icon" title="Refresh (F5)" aria-label="Refresh" onClick={refresh}>
+              <RefreshCw size={14} className={loading ? "spin" : ""} />
+            </button>
+            <div className="btn-group">
+              <button
+                className={`btn bulk ${bulk?.kind === "fetch" ? "running" : ""}`}
+                onClick={() => runAll("fetch")}
+                disabled={!!bulk}
+                title="Fetch every repo and submodule that has a remote (archived ones are skipped). Files and branches don't change."
+              >
+                {bulk?.kind === "fetch" ? <LoaderCircle size={14} className="spin" /> : <CloudDownload size={14} />}
+                <span className="bulk-label">{bulk?.kind === "fetch" ? `Fetching ${bulk.done}/${bulk.total}` : "Fetch all"}</span>
+              </button>
+              <button
+                className={`btn bulk ${bulk?.kind === "pull" ? "running" : ""}`}
+                onClick={() => runAll("pull")}
+                disabled={!!bulk}
+                title="Fast-forward every repo and submodule that's on a branch with an upstream (archived ones are skipped). Never merges, never overwrites local changes."
+              >
+                {bulk?.kind === "pull" ? <LoaderCircle size={14} className="spin" /> : <ArrowDownToLine size={14} />}
+                <span className="bulk-label">{bulk?.kind === "pull" ? `Pulling ${bulk.done}/${bulk.total}` : "Pull all"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
         <ProjectList
           projects={shown}
           statuses={statuses}
@@ -692,9 +752,10 @@ export function WorkspaceScreen({
             categories={categories}
             env={env}
             actions={actions}
+            onClose={() => setSelected(null)}
           />
         ) : selectedSub ? (
-          <SubmoduleDetail parent={selectedSub.parent} sm={selectedSub.sm} env={env} actions={actions} />
+          <SubmoduleDetail parent={selectedSub.parent} sm={selectedSub.sm} env={env} actions={actions} onClose={() => setSelected(null)} />
         ) : (
           <Summary
             ws={ws}
@@ -704,6 +765,11 @@ export function WorkspaceScreen({
             onSelect={(p) => {
               if (!viewFilter(view)(p)) setView({ kind: "section", section: p.section });
               setSelected(p.path);
+            }}
+            onCopyPath={actions.copyPath}
+            onNavigate={(v) => {
+              setView(v);
+              setSelected(null);
             }}
           />
         )}

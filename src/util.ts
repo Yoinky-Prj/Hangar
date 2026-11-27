@@ -14,6 +14,17 @@ export function projectTitle(p: ProjectEntry): string {
 }
 
 /** Second line under the title: owner/repo when the project has its own name. */
+/**
+ * The title in two parts, so a list can let the owner shrink first and keep
+ * the repo name readable. `owner` is null for a custom name or a plain folder.
+ */
+export function projectTitleParts(p: ProjectEntry): { owner: string | null; name: string } {
+  const name = p.meta?.name?.trim();
+  if (name) return { owner: null, name };
+  const r = p.meta?.source.remote;
+  return r ? { owner: r.owner, name: r.repo } : { owner: null, name: p.folder };
+}
+
 export function projectSubtitle(p: ProjectEntry): string | null {
   const r = p.meta?.source.remote;
   if (p.meta?.name?.trim()) return r ? repoLabel(r) : null;
@@ -113,6 +124,12 @@ export function fmtDate(iso: string | null | undefined): string {
   if (!iso) return "";
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleString();
+}
+
+export function fmtShortDate(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
 export function fmtBytes(n: number): string {

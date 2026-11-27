@@ -13,8 +13,8 @@ import {
   type WorkspaceView,
 } from "../api";
 import { CATEGORY_COLORS, fmtDate, untilTime } from "../util";
-import { Modal, Tabs, useToast } from "./common";
-import { AboutTab } from "./Update";
+import { Modal, useToast } from "./common";
+import { AboutTab, useUpdates } from "./Update";
 
 export type SettingsTab = "github" | "categories" | "environment" | "workspace" | "about";
 
@@ -136,9 +136,13 @@ function GitHubTab({
   if (account)
     return (
       <>
-        <div className="card row" style={{ gap: 14 }}>
-          {account.avatarUrl && <img src={account.avatarUrl} alt="" width={48} height={48} style={{ borderRadius: "50%" }} />}
-          <div style={{ flex: 1 }}>
+        <div className="settings-pane-head">
+          <h3>GitHub</h3>
+          <div className="hint">Connected account used for cloning private repos and browsing your repositories.</div>
+        </div>
+        <div className="card account-card">
+          {account.avatarUrl && <img src={account.avatarUrl} alt="" width={46} height={46} className="account-avatar" />}
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 700 }}>{account.login}</div>
             {account.name && <div className="muted">{account.name}</div>}
             <div className="hint" style={{ marginTop: 4 }}>
@@ -151,10 +155,10 @@ function GitHubTab({
             Sign out
           </button>
         </div>
-        <div className="field">
-          <label>Organizations</label>
+        <div className="card">
+          <h4>Organizations</h4>
           {account.orgs.length ? (
-            <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
+            <div className="row" style={{ flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
               {account.orgs.map((o) => (
                 <span key={o} className="pill">
                   {o}
@@ -162,19 +166,25 @@ function GitHubTab({
               ))}
             </div>
           ) : (
-            <span className="hint">None visible to this sign-in.</span>
+            <div className="hint" style={{ marginBottom: 8 }}>
+              None visible to this sign-in.
+            </div>
           )}
-          <span className="hint">
+          <div className="hint">
             Repos you own and repos from these organizations go to <b>Projects</b> by default; everything else to <b>Reference</b>.
             If an organization's repos are missing, an owner of that organization may need to approve your OAuth App (or authorize
             your token for SSO).
-          </span>
+          </div>
         </div>
       </>
     );
 
   return (
     <>
+      <div className="settings-pane-head">
+        <h3>GitHub</h3>
+        <div className="hint">Sign in to browse and clone your own and your organizations' repositories.</div>
+      </div>
       {accountError && (
         <div className="callout danger" style={{ marginBottom: 12 }}>
           <CircleX size={15} />
@@ -290,10 +300,10 @@ function CategoryRow({
   }
 
   return (
-    <div className="row" style={{ padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
+    <div className="cat-row">
       <input type="color" value={c} onChange={(e) => setC(e.target.value)} title="Category color" />
       <input className="input" value={n} onChange={(e) => setN(e.target.value)} onKeyDown={(e) => e.key === "Enter" && dirty && save()} />
-      <span className="hint" style={{ width: 80, textAlign: "right" }}>
+      <span className="hint" style={{ width: 76, textAlign: "right", flex: "none", fontVariantNumeric: "tabular-nums" }}>
         {usage} project{usage === 1 ? "" : "s"}
       </span>
       {dirty && (
@@ -347,35 +357,46 @@ function CategoriesTab({ ws, projects, onConfig }: { ws: WorkspaceView; projects
 
   return (
     <>
-      <div className="hint" style={{ marginBottom: 12 }}>
-        Categories are tags. A project can have several, and changing them never moves any files. Deleting a category removes it from
-        its projects.
+      <div className="settings-pane-head">
+        <h3>Categories</h3>
+        <div className="hint">
+          Categories are tags. A project can have several, and changing them never moves any files. Deleting a category removes it from
+          its projects.
+        </div>
       </div>
-      {ws.config.categories.map((c) => (
-        <CategoryRow
-          key={c.id}
-          ws={ws}
-          id={c.id}
-          name={c.name}
-          color={c.color}
-          usage={projects.filter((p) => p.meta?.categories.includes(c.id)).length}
-          onConfig={onConfig}
-        />
-      ))}
-      <div className="row" style={{ paddingTop: 12 }}>
-        <input type="color" value={color} onChange={(e) => setColor(e.target.value)} title="Category color" />
-        <input
-          className="input"
-          placeholder="New category, e.g. Bots"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && name.trim() && add()}
-          autoFocus
-        />
-        <button className="btn primary" onClick={add} disabled={!name.trim()}>
-          <Plus size={14} />
-          Add
-        </button>
+      <div className="card">
+        {ws.config.categories.length === 0 ? (
+          <div className="hint" style={{ padding: "8px 0" }}>
+            No categories yet. Add one below to tag and filter projects.
+          </div>
+        ) : (
+          ws.config.categories.map((c) => (
+            <CategoryRow
+              key={c.id}
+              ws={ws}
+              id={c.id}
+              name={c.name}
+              color={c.color}
+              usage={projects.filter((p) => p.meta?.categories.includes(c.id)).length}
+              onConfig={onConfig}
+            />
+          ))
+        )}
+        <div className="cat-add-bar">
+          <input type="color" value={color} onChange={(e) => setColor(e.target.value)} title="Category color" />
+          <input
+            className="input"
+            placeholder="New category, e.g. Bots"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && name.trim() && add()}
+            autoFocus
+          />
+          <button className="btn primary" onClick={add} disabled={!name.trim()}>
+            <Plus size={14} />
+            Add
+          </button>
+        </div>
       </div>
     </>
   );
@@ -386,19 +407,28 @@ function CategoriesTab({ ws, projects, onConfig }: { ws: WorkspaceView; projects
 function EnvironmentTab({ env }: { env: Environment }) {
   return (
     <>
-      <div className="hint" style={{ marginBottom: 8 }}>
-        Hangar has git and GitHub access built in, so it doesn't need Git or the GitHub CLI installed. The rest are optional helpers.
+      <div className="settings-pane-head">
+        <h3>Environment</h3>
+        <div className="hint">
+          Hangar has git and GitHub access built in, so it doesn't need Git or the GitHub CLI installed. The rest are optional helpers.
+        </div>
       </div>
       {env.tools.map((t) => (
         <div key={t.name} className="tool-row">
           {t.found ? <CircleCheck size={18} color="var(--ok)" /> : <CircleX size={18} color={t.required ? "var(--danger)" : "var(--faint)"} />}
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div className="row">
               <b>{t.name}</b>
               <span className={`pill ${t.required ? "accent" : ""}`}>{t.required ? "required" : "optional"}</span>
             </div>
-            <div className="hint">{t.note}</div>
-            {t.path && <div className="mono faint selectable">{t.path}</div>}
+            <div className="hint" style={{ marginTop: 2 }}>
+              {t.note}
+            </div>
+            {t.path && (
+              <div className="mono faint selectable" style={{ marginTop: 3 }}>
+                {t.path}
+              </div>
+            )}
           </div>
         </div>
       ))}
@@ -413,17 +443,23 @@ function WorkspaceTab({ ws, projects, onRemove }: { ws: WorkspaceView; projects:
   const [busy, setBusy] = useState(false);
   return (
     <>
-      <div className="kv" style={{ marginBottom: 16 }}>
-        <span className="k">Name</span>
-        <span className="v">{ws.config.name}</span>
-        <span className="k">Folder</span>
-        <span className="v mono selectable">{ws.root}</span>
-        <span className="k">Created</span>
-        <span className="v">{fmtDate(ws.config.createdAt)}</span>
-        <span className="k">Projects</span>
-        <span className="v">
-          {projects.length} folder{projects.length === 1 ? "" : "s"}
-        </span>
+      <div className="settings-pane-head">
+        <h3>Workspace</h3>
+        <div className="hint">Details and metadata storage for the currently open workspace.</div>
+      </div>
+      <div className="card">
+        <div className="kv">
+          <span className="k">Name</span>
+          <span className="v">{ws.config.name}</span>
+          <span className="k">Folder</span>
+          <span className="v mono selectable">{ws.root}</span>
+          <span className="k">Created</span>
+          <span className="v">{fmtDate(ws.config.createdAt)}</span>
+          <span className="k">Projects</span>
+          <span className="v">
+            {projects.length} folder{projects.length === 1 ? "" : "s"}
+          </span>
+        </div>
       </div>
       <div className="hint" style={{ marginBottom: 12 }}>
         Each project's metadata lives in its own <span className="mono">.hangar</span> folder, which is kept out of git through{" "}
@@ -502,33 +538,68 @@ export function SettingsDialog({
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<SettingsTab>(initialTab);
+  const updates = useUpdates();
+  const hasUpdate = !!(updates?.installed && updates.available);
+
   return (
-    <Modal
-      title="Settings"
-      onClose={onClose}
-      width={720}
-      tall
-      tabs={
-        <Tabs<SettingsTab>
-          value={tab}
-          onChange={setTab}
-          tabs={[
-            { id: "github", label: "GitHub", icon: <KeyRound size={14} /> },
-            { id: "categories", label: "Categories", icon: <Tag size={14} /> },
-            { id: "environment", label: "Environment", icon: <Wrench size={14} /> },
-            { id: "workspace", label: "Workspace", icon: <Warehouse size={14} /> },
-            { id: "about", label: "About", icon: <Info size={14} /> },
-          ]}
-        />
-      }
-    >
-      {tab === "github" && (
-        <GitHubTab settings={settings} setSettings={setSettings} account={account} accountError={accountError} setAccount={setAccount} />
-      )}
-      {tab === "categories" && <CategoriesTab ws={ws} projects={projects} onConfig={onConfig} />}
-      {tab === "environment" && <EnvironmentTab env={env} />}
-      {tab === "workspace" && <WorkspaceTab ws={ws} projects={projects} onRemove={onRemove} />}
-      {tab === "about" && <AboutTab />}
+    <Modal title="Settings" onClose={onClose} width={780} tall flush>
+      <div className="settings-layout">
+        <nav className="settings-nav" role="tablist" aria-label="Settings sections">
+          <button role="tab" aria-selected={tab === "github"} className={tab === "github" ? "on" : ""} onClick={() => setTab("github")}>
+            <KeyRound size={15} />
+            <span>GitHub</span>
+            {account && <span className="settings-nav-dot" title={`Signed in as ${account.login}`} />}
+          </button>
+          <button
+            role="tab"
+            aria-selected={tab === "categories"}
+            className={tab === "categories" ? "on" : ""}
+            onClick={() => setTab("categories")}
+          >
+            <Tag size={15} />
+            <span>Categories</span>
+            {ws.config.categories.length > 0 && <span className="settings-nav-badge">{ws.config.categories.length}</span>}
+          </button>
+          <button
+            role="tab"
+            aria-selected={tab === "environment"}
+            className={tab === "environment" ? "on" : ""}
+            onClick={() => setTab("environment")}
+          >
+            <Wrench size={15} />
+            <span>Environment</span>
+          </button>
+          <button
+            role="tab"
+            aria-selected={tab === "workspace"}
+            className={tab === "workspace" ? "on" : ""}
+            onClick={() => setTab("workspace")}
+          >
+            <Warehouse size={15} />
+            <span>Workspace</span>
+          </button>
+          <div className="settings-nav-sep" />
+          <button role="tab" aria-selected={tab === "about"} className={tab === "about" ? "on" : ""} onClick={() => setTab("about")}>
+            <Info size={15} />
+            <span>About</span>
+            {hasUpdate && (
+              <span className="pill ok settings-nav-pill" title="Update available">
+                New
+              </span>
+            )}
+          </button>
+        </nav>
+
+        <div className="settings-pane" role="tabpanel">
+          {tab === "github" && (
+            <GitHubTab settings={settings} setSettings={setSettings} account={account} accountError={accountError} setAccount={setAccount} />
+          )}
+          {tab === "categories" && <CategoriesTab ws={ws} projects={projects} onConfig={onConfig} />}
+          {tab === "environment" && <EnvironmentTab env={env} />}
+          {tab === "workspace" && <WorkspaceTab ws={ws} projects={projects} onRemove={onRemove} />}
+          {tab === "about" && <AboutTab />}
+        </div>
+      </div>
     </Modal>
   );
 }

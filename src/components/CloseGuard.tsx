@@ -50,8 +50,40 @@ export function CloseGuard() {
   if (!asking) return null;
   const cancellable = jobs.some((j) => j.cancel);
   return (
-    <Modal title="Still working" onClose={() => !stopping && setAsking(false)} width={480} locked={stopping} zIndex={90}>
-      <div className="callout warn" style={{ marginBottom: 12 }}>
+    <Modal
+      title="Still working"
+      onClose={() => !stopping && setAsking(false)}
+      width={480}
+      locked={stopping}
+      zIndex={90}
+      footer={
+        jobs.length === 0 ? (
+          <>
+            <div className="spacer" />
+            <button className="btn primary" onClick={close} autoFocus>
+              Close Hangar
+            </button>
+          </>
+        ) : (
+          <>
+            <button className="btn danger" onClick={close} disabled={stopping} title="Close right away, leaving the work unfinished">
+              Close anyway
+            </button>
+            <div className="spacer" />
+            {cancellable && (
+              <button className="btn" onClick={cancelAndClose} disabled={stopping} title="Stop it cleanly (removing any half-cloned folder), then close">
+                {stopping && <LoaderCircle size={13} className="spin" />}
+                {stopping ? "Stopping…" : "Cancel & close"}
+              </button>
+            )}
+            <button className="btn primary" onClick={() => setAsking(false)} disabled={stopping} autoFocus>
+              Keep working
+            </button>
+          </>
+        )
+      }
+    >
+      <div className="callout warn" style={{ marginBottom: 14 }}>
         <Info size={15} />
         <div>
           Closing Hangar now stops this partway.
@@ -65,34 +97,12 @@ export function CloseGuard() {
         <ul className="job-list">
           {jobs.map((j) => (
             <li key={j.id}>
-              <LoaderCircle size={13} className="spin" />
+              <LoaderCircle size={14} className="spin" />
               {j.label}
             </li>
           ))}
         </ul>
       )}
-      <div className="row" style={{ marginTop: 16, justifyContent: "flex-end", flexWrap: "wrap" }}>
-        {jobs.length === 0 ? (
-          <button className="btn primary" onClick={close}>
-            Close Hangar
-          </button>
-        ) : (
-          <>
-            <button className="btn danger" onClick={close} disabled={stopping} title="Close right away, leaving the work unfinished">
-              Close anyway
-            </button>
-            {cancellable && (
-              <button className="btn" onClick={cancelAndClose} disabled={stopping} title="Stop it cleanly (removing any half-cloned folder), then close">
-                {stopping && <LoaderCircle size={13} className="spin" />}
-                {stopping ? "Stopping…" : "Cancel it and close"}
-              </button>
-            )}
-            <button className="btn primary" onClick={() => setAsking(false)} disabled={stopping} autoFocus>
-              Keep working
-            </button>
-          </>
-        )}
-      </div>
     </Modal>
   );
 }

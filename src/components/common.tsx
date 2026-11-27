@@ -6,6 +6,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type CSSProperties,
   type ReactNode,
 } from "react";
 import { Check, CircleCheck, CircleX, GitBranch, Info, LoaderCircle, X } from "lucide-react";
@@ -72,6 +73,7 @@ export function Modal({
   tabs,
   width,
   tall,
+  flush,
   locked,
   zIndex,
 }: {
@@ -83,6 +85,8 @@ export function Modal({
   width?: number;
   /** Fixed height, for dialogs whose content changes (tabs, loading lists). */
   tall?: boolean;
+  /** Remove default body padding so split layouts can fill edge-to-edge. */
+  flush?: boolean;
   /**
    * A job is running: everything except the footer is non-interactive, and
    * the dialog can't be closed (no ×, Escape or click outside).
@@ -111,7 +115,7 @@ export function Modal({
           <h2>{title}</h2>
           <div className="spacer" />
           <button
-            className="btn ghost icon"
+            className="btn ghost icon small"
             onClick={onClose}
             aria-label="Close"
             disabled={locked}
@@ -120,11 +124,13 @@ export function Modal({
             <X size={16} />
           </button>
         </div>
-        <div className="modal-lock" inert={locked || undefined}>
-          {tabs}
-        </div>
-        <div className="modal-body">
+        {tabs && (
           <div className="modal-lock" inert={locked || undefined}>
+            {tabs}
+          </div>
+        )}
+        <div className={`modal-body ${flush ? "flush" : ""}`}>
+          <div className="modal-lock" style={flush ? { display: "flex", flex: 1, minHeight: 0 } : undefined} inert={locked || undefined}>
             {children}
           </div>
         </div>
@@ -252,6 +258,7 @@ export function CategoryPicker({
             type="button"
             key={c.id}
             className={`cat-chip ${on ? "on" : ""}`}
+            style={{ "--cat-color": c.color } as CSSProperties}
             onClick={() => onChange(on ? value.filter((v) => v !== c.id) : [...value, c.id])}
           >
             <span className="dot" style={{ background: c.color }} />
@@ -316,26 +323,28 @@ export function StatusBadges({
   if (n > 0)
     out.push(
       <span key="n" className="pill warn" title={`${status.staged} staged · ${status.modified} modified · ${status.untracked} untracked`}>
-        ● {n} changed
+        <span className="pill-dot" />
+        {n}
+        <span className="pill-verb"> changed</span>
       </span>,
     );
   if (status.unpushed > 0) {
     const plus = status.unpushedCapped ? "+" : "";
     out.push(
       status.remotes.length ? (
-        <span key="p" className="pill accent" title="Commits that aren't on any remote branch">
-          ↑ {status.unpushed}
-          {plus} unpushed
+        <span key="p" className="pill accent" title={`${status.unpushed}${plus} commit${status.unpushed === 1 ? "" : "s"} not on any remote branch`}>
+          ↑{status.unpushed}
+          {plus}
         </span>
       ) : (
         <span key="p" className="pill violet" title="This repo has no remote, so these commits only exist here">
           {status.unpushed}
-          {plus} local only
+          {plus} local
         </span>
       ),
     );
   }
-  if (status.behind) out.push(<span key="b" className="pill" title="Commits on the upstream you don't have">↓ {status.behind}</span>);
+  if (status.behind) out.push(<span key="b" className="pill teal" title="Commits on the upstream you don't have">↓{status.behind}</span>);
   if (subs) {
     const parts = [
       subs.changed && `${subs.changed} changed`,
@@ -345,12 +354,18 @@ export function StatusBadges({
     ].filter(Boolean);
     if (parts.length)
       out.push(
-        <span key="s" className={`pill ${subs.changed || subs.unpushed ? "warn" : ""}`} title="Submodules that need attention">
-          subs: {parts.join(" · ")}
+        <span key="s" className={`pill ${subs.changed || subs.unpushed ? "warn" : ""}`} title={`Submodules: ${parts.join(" · ")}`}>
+          subs
         </span>,
       );
   }
-  if (!out.length) out.push(<span key="ok" className="pill ok">Clean</span>);
+  if (!out.length)
+    out.push(
+      <span key="ok" className="pill ok">
+        <span className="pill-dot" />
+        Clean
+      </span>,
+    );
   return (
     <>
       {branch}

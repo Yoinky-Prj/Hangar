@@ -213,7 +213,9 @@ export function WorkspaceSwitcher({
                         </span>
                       )}
                       {current ? (
-                        <Check size={15} className="ws-item-check" aria-label="Open now" />
+                        <span className="ws-item-check" aria-label="Open now">
+                          <Check size={14} />
+                        </span>
                       ) : (
                         <button
                           className="ws-item-remove"
@@ -250,8 +252,9 @@ export function WorkspaceSwitcher({
         aria-haspopup="dialog"
         aria-expanded={isOpen}
       >
+        <Warehouse size={14} style={{ color: "var(--text-muted)", flex: "none" }} />
         <span className="ws-switch-name">{ws.config.name}</span>
-        <ChevronDown size={13} />
+        <ChevronDown size={13} className="ws-switch-chev" />
       </button>
       {pop}
     </>

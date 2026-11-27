@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
-const DELAY_MS = 450;
+const DELAY_MS = 380;
 /** Wider than this (e.g. a list row), the tooltip follows the pointer instead of centering. */
 const WIDE_PX = 280;
 

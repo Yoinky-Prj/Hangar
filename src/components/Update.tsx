@@ -1,12 +1,65 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { CircleArrowUp, ExternalLink, LoaderCircle, RefreshCw, RotateCw } from "lucide-react";
+import { ArrowRight, CircleArrowUp, CircleCheck, ExternalLink, LoaderCircle, RefreshCw, RotateCw } from "lucide-react";
 import { api, errText, onUpdateAvailable, onUpdateInstalling, onUpdateProgress, type UpdateInfo, type UpdateStatus } from "../api";
 import { onJobsChange, runningJobs } from "../jobs";
-import { fmtBytes, fmtDate } from "../util";
+import { fmtBytes, fmtShortDate } from "../util";
+import { AppIcon } from "./Brand";
 import { Modal } from "./common";
 
 const RELEASES_URL = "https://github.com/Yoinky-Prj/Hangar/releases";
+
+/** Lightweight offline Markdown renderer for GitHub release notes (headings, bullets, bold, inline code). */
+function renderInline(text: string): ReactNode[] {
+  const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g);
+  return parts.map((p, i) => {
+    if (p.startsWith("`") && p.endsWith("`") && p.length > 2) return <code key={i}>{p.slice(1, -1)}</code>;
+    if (p.startsWith("**") && p.endsWith("**") && p.length > 4) return <strong key={i}>{p.slice(2, -2)}</strong>;
+    return p;
+  });
+}
+
+function MarkdownNotes({ text, className }: { text: string; className: string }) {
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
+  const blocks: ReactNode[] = [];
+  let bullets: string[] = [];
+
+  const flushBullets = () => {
+    if (!bullets.length) return;
+    blocks.push(
+      <ul key={`ul-${blocks.length}`}>
+        {bullets.map((b, i) => (
+          <li key={i}>{renderInline(b)}</li>
+        ))}
+      </ul>,
+    );
+    bullets = [];
+  };
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) {
+      flushBullets();
+      continue;
+    }
+    const h = line.match(/^#{1,4}\s+(.*)$/);
+    if (h) {
+      flushBullets();
+      blocks.push(<h4 key={`h-${blocks.length}`}>{renderInline(h[1])}</h4>);
+      continue;
+    }
+    const li = line.match(/^[-*]\s+(.*)$/);
+    if (li) {
+      bullets.push(li[1]);
+      continue;
+    }
+    flushBullets();
+    blocks.push(<p key={`p-${blocks.length}`}>{renderInline(line)}</p>);
+  }
+  flushBullets();
+
+  return <div className={`${className} md-notes selectable`}>{blocks}</div>;
+}
 
 /* ---------- this window's view of the update state ---------- */
 
@@ -62,11 +115,11 @@ export function UpdateButton() {
   return (
     <>
       <button
-        className="btn small primary update-btn"
+        className="btn small update-btn"
         title={`Hangar ${s.available.version} is available (you have ${s.current})`}
         onClick={() => setOpen(true)}
       >
-        <CircleArrowUp size={14} />
+        <CircleArrowUp size={13} />
         Update
       </button>
       {open && <UpdateDialog current={s.current} info={s.available} onClose={() => setOpen(false)} />}
@@ -149,18 +202,15 @@ export function UpdateDialog({ current, info, onClose }: { current: string; info
         </>
       }
     >
-      <div className="kv" style={{ marginBottom: 12 }}>
-        <span className="k">You have</span>
-        <span className="v">{current}</span>
-        <span className="k">New version</span>
-        <span className="v">
-          <b>{info.version}</b>
-          {info.date && <span className="faint"> · released {fmtDate(info.date)}</span>}
-        </span>
+      <div className="update-compare">
+        <span className="pill mono">{current}</span>
+        <ArrowRight size={14} style={{ color: "var(--text-muted)", flex: "none" }} />
+        <span className="pill ok mono">{info.version}</span>
+        {info.date && <span className="faint" style={{ marginLeft: "auto", fontSize: 11.5 }}>Released {fmtShortDate(info.date)}</span>}
       </div>
-      {info.notes && <div className="update-notes selectable">{info.notes}</div>}
+      {info.notes && <MarkdownNotes text={info.notes} className="update-notes" />}
       <div className="hint">
-        Hangar downloads the update, installs it and restarts where you left off. Your workspaces and settings stay as they are.
+        Hangar downloads the update, installs it, and restarts where you left off. Your workspaces and settings stay as they are.
       </div>
       {jobs.length > 0 && (
         <div className="callout warn" style={{ marginTop: 12 }}>
@@ -210,22 +260,37 @@ export function AboutTab() {
   const date = newOne ? newOne.date : s.currentDate;
   return (
     <>
-      <div className="kv" style={{ marginBottom: 16 }}>
-        <span className="k">Version</span>
-        <span className="v">{s.current}</span>
-        <span className="k">Copy</span>
-        <span className="v">{s.installed ? "Installed (updates itself)" : "Standalone exe (doesn't update itself)"}</span>
+      <div className="settings-pane-head">
+        <h3>About</h3>
+        <div className="hint">Version information, release notes, and automatic updates.</div>
       </div>
 
-      {s.installed && !update && (
-        <div className="row" style={{ marginBottom: 12 }}>
-          <button className="btn" onClick={check} disabled={checking}>
-            {checking ? <LoaderCircle size={14} className="spin" /> : <RefreshCw size={14} />}
-            Check for updates
-          </button>
-          {upToDate && <span className="hint">You have the latest version.</span>}
+      <div className="about-hero">
+        <AppIcon size={40} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="row" style={{ gap: 8 }}>
+            <span className="about-title">Hangar</span>
+            <span className="pill mono">{s.current}</span>
+          </div>
+          <div className="hint" style={{ marginTop: 2 }}>
+            {s.installed ? "Installed · updates automatically" : "Portable exe · doesn't update"}
+          </div>
         </div>
-      )}
+        {s.installed && !update && (
+          <div className="row" style={{ gap: 8 }}>
+            {upToDate && (
+              <span className="pill ok">
+                <CircleCheck size={11} />
+                Up to date
+              </span>
+            )}
+            <button className="btn small" onClick={check} disabled={checking}>
+              {checking ? <LoaderCircle size={13} className="spin" /> : <RefreshCw size={13} />}
+              Check for updates
+            </button>
+          </div>
+        )}
+      </div>
 
       <div className="card">
         <div className="row" style={{ marginBottom: 8 }}>
@@ -244,18 +309,18 @@ export function AboutTab() {
           <div className="spacer" />
           {update && (
             <button className="btn small primary" onClick={() => setOpen(true)}>
-              <CircleArrowUp size={14} />
+              <CircleArrowUp size={13} />
               Update to {update.version}
             </button>
           )}
         </div>
         {date && (
-          <div className="hint" style={{ marginBottom: 6 }}>
-            Released {fmtDate(date)}
+          <div className="hint" style={{ marginBottom: 8 }}>
+            Released {fmtShortDate(date)}
           </div>
         )}
         {notes ? (
-          <div className="release-notes selectable">{notes}</div>
+          <MarkdownNotes text={notes} className="release-notes" />
         ) : (
           <div className="hint">
             {newOne ? "No release notes." : "This build wasn't made from a GitHub release, so it has no release notes."}
@@ -264,14 +329,14 @@ export function AboutTab() {
       </div>
 
       {s.installed ? (
-        <div className="hint">
+        <div className="hint" style={{ marginTop: 12 }}>
           Hangar looks for a new version on GitHub when it starts and every hour, and shows an Update button in the title bar when
           there is one.
         </div>
       ) : (
-        <div className="hint">
-          New versions are published on GitHub. The installer keeps Hangar up to date by itself; a standalone exe has to be replaced by
-          hand.
+        <div className="hint" style={{ marginTop: 12 }}>
+          This portable copy can't update. For a newer version, download it from the releases page, or use the installer: an installed
+          Hangar keeps itself up to date.
           <div style={{ marginTop: 8 }}>
             <button className="btn small" onClick={() => api.openUrl(RELEASES_URL)}>
               <ExternalLink size={13} />

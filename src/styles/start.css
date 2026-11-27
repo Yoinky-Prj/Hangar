@@ -1,0 +1,480 @@
+/* ==========================================================================
+   Start Screens: Splash, Errors, Env Blocker, Workspace Picker & Setup Tree
+   ========================================================================== */
+
+/* ---------- Splash ---------- */
+
+.splash-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  animation: fade-in 200ms var(--ease-out);
+}
+
+.splash-icon {
+  filter: drop-shadow(0 10px 36px color-mix(in srgb, var(--accent) 20%, transparent));
+}
+
+.splash-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+/* ---------- Landing / Workspace Picker ---------- */
+
+.landing {
+  --grid: rgba(15, 23, 42, 0.045);
+  --glow-blue: color-mix(in srgb, var(--sec-projects) 13%, transparent);
+  --glow-teal: color-mix(in srgb, var(--sec-reference) 9%, transparent);
+  background:
+    radial-gradient(760px 460px at 8% -5%, var(--glow-blue), transparent 68%),
+    radial-gradient(640px 420px at 96% 108%, var(--glow-teal), transparent 68%),
+    var(--bg-app);
+}
+
+@media (prefers-color-scheme: dark) {
+  .landing {
+    --grid: rgba(255, 255, 255, 0.032);
+    --glow-blue: color-mix(in srgb, var(--sec-projects) 17%, transparent);
+    --glow-teal: color-mix(in srgb, var(--sec-reference) 11%, transparent);
+  }
+}
+
+.landing-body {
+  min-height: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(380px, 448px);
+  align-items: center;
+  gap: clamp(28px, 4.5vw, 64px);
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 12px clamp(24px, 4.5vw, 56px) 28px;
+  overflow: clip;
+}
+
+.landing-hero {
+  position: relative;
+  padding: 12px 0;
+}
+
+/* Architectural hangar floor grid fading organically into the background */
+.landing-hero::before {
+  content: "";
+  position: absolute;
+  inset: -64px -32px -64px -96px;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(closest-side, #000 35%, transparent);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.landing-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.hero-brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.hero-icon {
+  display: block;
+  flex: none;
+  filter: drop-shadow(0 10px 24px color-mix(in srgb, var(--accent) 34%, transparent));
+}
+
+.landing-hero h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(32px, 3.6vw, 42px);
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+
+.hero-sub {
+  margin-top: 4px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.tagline {
+  margin: 0 0 22px;
+  max-width: 450px;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.bays {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  max-width: 450px;
+}
+
+.bay {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 9px 12px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--bg-surface) 48%, transparent);
+}
+
+.bay-icon {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+}
+
+.bay-icon.blue {
+  background: var(--sec-projects-soft);
+  color: var(--sec-projects);
+}
+
+.bay-icon.teal {
+  background: var(--sec-reference-soft);
+  color: var(--sec-reference);
+}
+
+.bay-icon.amber {
+  background: var(--sec-archive-soft);
+  color: var(--sec-archive);
+}
+
+.bay-name {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.bay-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 1px;
+}
+
+.hero-foot {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 20px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.hero-foot-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ok);
+}
+
+/* ---------- Landing Right Dock Card ---------- */
+
+.panel-card {
+  padding: 24px;
+  border-radius: var(--r-xl);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
+  box-shadow:
+    var(--shadow-lg),
+    inset 0 1px 0 var(--specular);
+  animation: panel-reveal 180ms var(--ease-spring);
+}
+
+.panel-card h2 {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.panel-card > p.muted {
+  margin: 0 0 18px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.panel-label {
+  margin: 18px 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.recent-empty {
+  padding: 18px 14px;
+  border-radius: var(--r-lg);
+  border: 1px dashed var(--border-strong);
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 248px;
+  overflow-y: auto;
+  margin: 0 -4px;
+  padding: 2px 4px;
+}
+
+.recent-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 10px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  cursor: pointer;
+  transition:
+    background var(--dur-fast),
+    border-color var(--dur-fast),
+    box-shadow var(--dur-fast);
+}
+
+.recent-row:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-xs);
+}
+
+.recent-row.missing .recent-icon {
+  opacity: 0.5;
+}
+
+.recent-row.missing .recent-label {
+  color: var(--text-secondary);
+}
+
+.recent-row.missing .recent-chev {
+  display: none;
+}
+
+.recent-row.missing .recent-remove {
+  opacity: 0.72;
+}
+
+.recent-icon {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.recent-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.recent-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.recent-label {
+  font-weight: 600;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-path {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+.recent-remove {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-muted);
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  cursor: pointer;
+  transition:
+    opacity var(--dur-fast),
+    background var(--dur-fast),
+    color var(--dur-fast);
+}
+
+.recent-row:hover .recent-remove,
+.recent-remove:focus-visible {
+  opacity: 1;
+}
+
+.recent-remove:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.recent-chev {
+  flex: none;
+  color: var(--text-muted);
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    color var(--dur-fast);
+}
+
+.recent-row:hover .recent-chev {
+  transform: translateX(2px);
+  color: var(--text);
+}
+
+/* ---------- Workspace Setup Preview ---------- */
+
+.path-chip {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 12px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+  background: var(--bg-sunken);
+  margin-top: 10px;
+}
+
+.path-chip > svg {
+  flex: none;
+  color: var(--accent);
+}
+
+.path-chip-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.path-chip-path {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tree-row {
+  display: grid;
+  grid-template-columns: 30px 92px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+}
+
+.tree-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+}
+
+.tree-icon.slate {
+  background: var(--bg-sunken);
+  color: var(--text-secondary);
+}
+
+.tree-icon.blue {
+  background: var(--sec-projects-soft);
+  color: var(--sec-projects);
+}
+
+.tree-icon.teal {
+  background: var(--sec-reference-soft);
+  color: var(--sec-reference);
+}
+
+.tree-icon.amber {
+  background: var(--sec-archive-soft);
+  color: var(--sec-archive);
+}
+
+.tree-name {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.tree-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Blocker missing tool severity card */
+.blocker-tool {
+  border-color: var(--danger-border);
+  background: color-mix(in srgb, var(--danger-soft) 35%, var(--bg-surface));
+}
+
+/* Keep the two-column start layout crisp down to the 960x560 min window */
+@media (max-height: 620px) {
+  .landing-body {
+    padding-top: 4px;
+    padding-bottom: 14px;
+  }
+  .panel-card {
+    padding: 18px 20px;
+  }
+  .recent-list {
+    max-height: 200px;
+  }
+  .tagline {
+    margin-bottom: 16px;
+  }
+  .hero-foot {
+    margin-top: 14px;
+  }
+}
+
+@media (max-width: 900px) {
+  .landing-body {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding: 12px 24px 36px;
+  }
+}

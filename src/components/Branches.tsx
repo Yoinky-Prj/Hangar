@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { ArrowDownToLine, CircleDot, Cloud, GitBranch, GitBranchPlus, LoaderCircle, Trash } from "lucide-react";
+import { ArrowDownToLine, ChevronDown, ChevronRight, CircleDot, Cloud, GitBranch, GitBranchPlus, LoaderCircle, Trash } from "lucide-react";
 import { api, errText, type BranchList, type GitStatus, type LocalBranch, type RemoteBranch } from "../api";
 import { startJob } from "../jobs";
 import { baseName, relTime } from "../util";
@@ -212,10 +212,11 @@ export function BranchesSection({
       {remoteOnly.length > 0 && (
         <>
           <button className="link-toggle" onClick={() => setShowRemote((v) => !v)}>
+            {showRemote ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
             {showRemote ? "Hide" : "Show"} {remoteOnly.length} remote branch{remoteOnly.length === 1 ? "" : "es"}
           </button>
           {showRemote && (
-            <div className="branch-list">
+            <div className="branch-list" style={{ marginTop: 6 }}>
               {remoteOnly.map((rb) => (
                 <div key={rb.name} className="branch-row">
                   <Cloud size={14} className="branch-icon" />

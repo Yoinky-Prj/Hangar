@@ -1,7 +1,7 @@
 import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
 import { ArrowDown, ChevronRight, Folder, FolderGit2, Inbox } from "lucide-react";
 import type { Category, GitStatus, ProjectEntry, SubmoduleInfo } from "../api";
-import { projectSubtitle, projectTitle, relTime, subIssues } from "../util";
+import { projectSubtitle, projectTitleParts, relTime, subIssues } from "../util";
 import { StatusBadges } from "./common";
 
 export type Sort = "name" | "activity";
@@ -21,7 +21,7 @@ export function activityOf(p: ProjectEntry, s: GitStatus | null | undefined): nu
 function headLabel(s: GitStatus | null | undefined, commit?: string | null): string {
   if (!s) return "";
   if (s.branch) return ` · ${s.branch}`;
-  if (s.detached) return ` · detached${commit ? ` @ ${commit}` : ""}`;
+  if (s.detached) return commit ? ` · @ ${commit}` : " · detached";
   return "";
 }
 
@@ -55,6 +55,9 @@ export function ProjectList({
   empty: ReactNode;
 }) {
   const catMap = new Map(categories.map((c) => [c.id, c]));
+  // The Categories column only takes room when something in this view has one.
+  const anyCats = projects.some((p) => (p.meta?.categories ?? []).some((id) => catMap.has(id)));
+  const cols = anyCats ? "" : " no-cats";
 
   const rows: ListRow[] = [];
   for (const p of projects) {
@@ -91,18 +94,22 @@ export function ProjectList({
 
   return (
     <>
-      <div className="list-head">
-        <button onClick={() => setSort("name")}>Name {sort === "name" && <ArrowDown size={12} />}</button>
-        <span>Categories</span>
+      <div className={`list-head${cols}`}>
+        <button className={sort === "name" ? "sorted" : ""} onClick={() => setSort("name")}>
+          Name {sort === "name" && <ArrowDown size={12} />}
+        </button>
+        <span className="head-cats">Categories</span>
         <span>Status</span>
-        <button style={{ justifySelf: "end" }} onClick={() => setSort("activity")}>
-          Last activity {sort === "activity" && <ArrowDown size={12} />}
+        <button className={sort === "activity" ? "sorted" : ""} style={{ justifySelf: "end" }} onClick={() => setSort("activity")}>
+          Activity {sort === "activity" && <ArrowDown size={12} />}
         </button>
       </div>
-      <div className="list-body" tabIndex={0} onKeyDown={onKey}>
+      <div className={`list-body${cols}`} tabIndex={0} onKeyDown={onKey}>
         {rows.length === 0 ? (
           <div className="empty">
-            <Inbox size={34} />
+            <div className="empty-icon">
+              <Inbox size={22} />
+            </div>
             {empty}
           </div>
         ) : (
@@ -128,11 +135,15 @@ export function ProjectList({
               return (
                 <div key={key} {...common}>
                   <div className="cell-name">
-                    <span className="twisty-space" />
-                    <FolderGit2 size={16} className="sub-icon" />
+                    <FolderGit2 size={15} className="sub-icon" />
                     <div className="names">
-                      <div className="folder">{sm.path}</div>
-                      <div className="sub">{where + headLabel(s, sm.checkedOut)}</div>
+                      <div className="folder">
+                        <span className="folder-label">{sm.path}</span>
+                      </div>
+                      <div className="sub">
+                        <span className="sub-where">{where}</span>
+                        <span className="sub-head">{headLabel(s, sm.checkedOut)}</span>
+                      </div>
                     </div>
                   </div>
                   <div className="cell-cats">
@@ -163,6 +174,7 @@ export function ProjectList({
             const when = s?.lastCommit?.time ?? p.modified;
             const open = expanded.has(p.path);
             const sub = projectSubtitle(p);
+            const title = projectTitleParts(p);
             return (
               <div key={key} {...common}>
                 <div className="cell-name">
@@ -179,26 +191,45 @@ export function ProjectList({
                   ) : (
                     <span className="twisty-space" />
                   )}
-                  {p.isGit ? <FolderGit2 size={18} /> : <Folder size={18} />}
+                  {p.isGit ? <FolderGit2 size={17} /> : <Folder size={17} className="plain-folder" />}
                   <div className="names">
                     <div className="folder">
-                      {projectTitle(p)}{" "}
-                      {!p.managed && (
-                        <span className="pill" title="This folder has no Hangar metadata yet">
-                          not managed
+                      <span className="folder-label">
+                        {title.owner && <span className="owner">{title.owner}</span>}
+                        <span className="repo">
+                          {title.owner && "/"}
+                          {title.name}
+                        </span>
+                      </span>
+                      {cats.length > 0 && (
+                        <span className="inline-dots" aria-hidden>
+                          {cats.slice(0, 4).map((c) => (
+                            <span key={c.id} className="dot" style={{ background: c.color }} title={c.name} />
+                          ))}
                         </span>
                       )}
                     </div>
-                    {sub && <div className="sub">{sub}</div>}
+                    {!p.managed ? (
+                      <div className="sub warn-text" title="This folder has no Hangar metadata yet">
+                        Not managed yet{sub ? ` · ${sub}` : ""}
+                      </div>
+                    ) : (
+                      sub && <div className="sub">{sub}</div>
+                    )}
                   </div>
                 </div>
                 <div className="cell-cats">
-                  {cats.map((c) => (
+                  {cats.slice(0, 2).map((c) => (
                     <span key={c.id} className="cat-chip">
                       <span className="dot" style={{ background: c.color }} />
                       {c.name}
                     </span>
                   ))}
+                  {cats.length > 2 && (
+                    <span className="pill" title={cats.slice(2).map((c) => c.name).join(", ")}>
+                      +{cats.length - 2}
+                    </span>
+                  )}
                 </div>
                 <div className="cell-status">
                   <StatusBadges isGit={p.isGit} status={s} subs={subIssues(subs[p.path])} />

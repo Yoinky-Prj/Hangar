@@ -112,12 +112,12 @@ export function OpenButtons({
   const hasTerm = toolFound(env, "Terminal");
   return (
     <div className="launchers">
-      <Launcher brand="#ffc83d" icon={<ExplorerIcon />} title="Explorer" sub="Show the folder" onClick={() => onOpen("explorer", path)} />
+      <Launcher brand="#ffc83d" icon={<ExplorerIcon />} title="Explorer" sub="Show folder" onClick={() => onOpen("explorer", path)} />
       <Launcher
         brand="#2c9cf0"
         icon={<VsCodeIcon src={icons.vscode} />}
         title="VS Code"
-        sub="Open the folder"
+        sub="Open folder"
         disabled={!hasCode}
         hint={hasCode ? undefined : "VS Code wasn't found. See Settings → Environment."}
         onClick={() => onOpen("vscode", path)}
@@ -136,7 +136,7 @@ export function OpenButtons({
           brand="var(--text)"
           icon={<GitHubMark />}
           title={remote.host === "github.com" ? "GitHub" : remote.host}
-          sub="Open repo page"
+          sub="Repo page"
           onClick={() => onOpenUrl(remote.url)}
         />
       )}

@@ -12,7 +12,13 @@ export function Splash() {
   return (
     <Frame brand={false}>
       <div className="center-screen">
-        <LoaderCircle size={22} className="spin faint" />
+        <div className="splash-box">
+          <AppIcon size={54} className="splash-icon" />
+          <div className="splash-meta">
+            <LoaderCircle size={15} className="spin" />
+            <span>Opening Hangar…</span>
+          </div>
+        </div>
       </div>
     </Frame>
   );
@@ -22,7 +28,15 @@ export function StartError({ message }: { message: string }) {
   return (
     <Frame>
       <div className="center-screen">
-        <div className="callout danger">Hangar couldn't start: {message}</div>
+        <div className="panel-card" style={{ width: 480, maxWidth: "100%" }}>
+          <div className="row" style={{ gap: 10, marginBottom: 12 }}>
+            <CircleX size={20} color="var(--danger)" />
+            <h2 style={{ margin: 0 }}>Hangar couldn't start</h2>
+          </div>
+          <div className="callout danger selectable">
+            <div>{message}</div>
+          </div>
+        </div>
       </div>
     </Frame>
   );
@@ -34,11 +48,11 @@ export function EnvBlocker({ env, onRetry }: { env: Environment; onRetry: () => 
   return (
     <Frame>
       <div className="center-screen">
-        <div className="panel-card" style={{ width: 520 }}>
+        <div className="panel-card" style={{ width: 520, maxWidth: "100%" }}>
           <h2>Hangar can't start yet</h2>
           <p className="muted">Install what's missing below, then check again.</p>
           {missing.map((t) => (
-            <div key={t.name} className="tool-row">
+            <div key={t.name} className="tool-row blocker-tool">
               <CircleX size={18} color="var(--danger)" />
               <div>
                 <b>{t.name}</b>
@@ -46,7 +60,7 @@ export function EnvBlocker({ env, onRetry }: { env: Environment; onRetry: () => 
               </div>
             </div>
           ))}
-          <button className="btn primary lg" onClick={onRetry} style={{ marginTop: 16 }}>
+          <button className="btn primary lg block" onClick={onRetry} style={{ marginTop: 18 }}>
             Check again
           </button>
         </div>
@@ -132,15 +146,23 @@ export function WorkspacePicker({
     <Frame brand={false} className="landing">
       <div className="landing-body">
         <section className="landing-hero">
-          <AppIcon size={76} className="hero-icon" />
-          <h1>Hangar</h1>
+          <div className="hero-brand">
+            <AppIcon size={64} className="hero-icon" />
+            <div>
+              <h1>Hangar</h1>
+              <div className="hero-sub">Local code workspace dashboard</div>
+            </div>
+          </div>
           <p className="tagline">All your projects in one folder: your own work, the code you learn from, and everything you've parked.</p>
           <div className="bays">
             <Bay icon={<Briefcase size={17} />} tone="blue" name="Projects" text="Your repos and your organizations' repos" />
             <Bay icon={<BookOpen size={17} />} tone="teal" name="Reference" text="Other people's code you keep around to read" />
             <Bay icon={<Archive size={17} />} tone="amber" name="Archive" text="Finished or paused work, out of the way but one click back" />
           </div>
-          <div className="hero-foot">Git and GitHub built in. Nothing else to install.</div>
+          <div className="hero-foot">
+            <span className="hero-foot-dot" />
+            Git and GitHub built in. Nothing else to install.
+          </div>
         </section>
 
         <section className="landing-panel">
@@ -182,7 +204,12 @@ export function WorkspacePicker({
                         className={`recent-row ${missing ? "missing" : ""}`}
                         title={p}
                         onClick={() => !busy && consider(p)}
-                        onKeyDown={(e) => e.key === "Enter" && !busy && consider(p)}
+                        onKeyDown={(e) => {
+                          if ((e.key === "Enter" || e.key === " ") && !busy) {
+                            e.preventDefault();
+                            consider(p);
+                          }
+                        }}
                       >
                         <div className="recent-icon">
                           <Warehouse size={16} />
